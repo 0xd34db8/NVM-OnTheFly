@@ -1,0 +1,358 @@
+import { spawn } from 'node:child_process'
+import * as sudo from 'sudo-prompt'
+import { join } from 'node:path'
+
+if (process.platform === 'win32') {
+    const appDataNvm = process.env.APPDATA ? join(process.env.APPDATA, 'nvm') : '';
+    const programDataNvm = process.env.ALLUSERSPROFILE ? join(process.env.ALLUSERSPROFILE, 'nvm') : '';
+    const gitBashBin = 'C:\\Program Files\\Git\\bin';
+    
+    if (appDataNvm && !process.env.PATH?.includes(appDataNvm)) {
+        process.env.PATH = `${appDataNvm};${process.env.PATH}`;
+    }
+    if (programDataNvm && !process.env.PATH?.includes(programDataNvm)) {
+        process.env.PATH = `${programDataNvm};${process.env.PATH}`;
+    }
+    if (!process.env.PATH?.includes(gitBashBin)) {
+        process.env.PATH = `${gitBashBin};${process.env.PATH}`;
+    }
+}
+
+export type Mode = 'nvm-windows' | 'nvm-sh' | 'Error'
+
+let currentMode: Mode = 'nvm-windows'
+
+export async function checkAvailableModes(): Promise<Mode[]> {
+    let modes: Mode[] = []
+    if (process.platform === 'win32') {
+        try {
+            await new Promise<void>((resolve, reject) => {
+                const cmd = spawn('nvm', ['version'], { shell: true })
+                cmd.on('exit', code => code === 0 ? resolve() : reject())
+                cmd.on('error', () => reject())
+            })
+            modes.push('nvm-windows')
+        } catch (_e) {}
+
+        try {
+            await new Promise<void>((resolve, reject) => {
+                const bashCmd = 'source ~/.bash_profile 2>/dev/null || true; source ~/.bashrc 2>/dev/null || true; source ~/.nvm/nvm.sh 2>/dev/null || true; nvm --version'
+                const cmd = spawn('bash', ['-c', bashCmd], { shell: false })
+                cmd.on('exit', code => code === 0 ? resolve() : reject())
+                cmd.on('error', () => reject())
+            })
+            modes.push('nvm-sh')
+        } catch (_e) {}
+    } else {
+        modes.push('nvm-sh')
+    }
+    
+    if (modes.length > 0) {
+        currentMode = modes[0]
+    }
+    
+    return modes
+}
+
+export function setMode(mode: Mode) {
+    currentMode = mode
+}
+
+export function getMode() {
+    return currentMode
+}
+
+export interface NvmCommandResult {
+    result: string[]
+    os: string
+    mode: Mode
+    command: string
+}
+
+export function runCommand(args: string[], onStream?: (msg: string, type: string) => void): Promise<NvmCommandResult> {
+    return new Promise((resolve) => {
+        let result: string[] = []
+        if (onStream) onStream(`\n> nvm ${args.join(' ')}\n`, 'system')
+
+        if (process.platform === 'darwin') {
+            for (let i = 0; i < 10; i++) {
+                result.push(`v21.4.0`)
+            }
+            resolve({ result, os: process.platform, mode: currentMode, command: args[0] })
+            return
+        }
+
+        const safeArgs = args.map(a => a.replace(/[^a-zA-Z0-9.\-=]/g, ''))
+        let isFallback = false
+
+        const executeCmd = (executable: string, cmdArgs: string[], useShell: boolean) => {
+            const cmd = spawn(executable, cmdArgs, { shell: useShell })
+            let stderrData = ''
+            let stdoutData = ''
+
+            const handleFallback = () => {
+                if (!isFallback && executable === 'nvm') {
+                    isFallback = true
+                    result = []
+                    
+                    let fallbackArgs = [...safeArgs]
+                    if (fallbackArgs[0] === 'use') {
+                        fallbackArgs = ['alias', 'default', fallbackArgs[1]]
+                    }
+
+                    let bashCmd = `source ~/.bash_profile 2>/dev/null || true; source ~/.bashrc 2>/dev/null || true; source ~/.nvm/nvm.sh 2>/dev/null || true; nvm use default >/dev/null 2>&1; nvm ${fallbackArgs.join(' ')}`
+                    if (fallbackArgs[0] === 'ls') {
+                        bashCmd += `; echo "---CURRENT---"; cat ~/.nvm/alias/default 2>/dev/null || echo "None"`
+                    }
+
+                    executeCmd('bash', ['-c', bashCmd], false)
+                    return true
+                }
+                return false
+            }
+
+            if (executable === 'nvm' && currentMode === 'nvm-sh' && !isFallback) {
+                handleFallback()
+                return
+            }
+
+            cmd.on('error', (err) => {
+                if (handleFallback()) return;
+                
+                if (executable !== 'nvm') {
+                    resolve({ result: [`Error: ${err.message}`], os: process.platform, mode: 'Error', command: args[0] })
+                }
+            })
+
+            cmd.stderr.on('data', data => {
+                const msg = String(data)
+                if (!msg.includes("'nvm' is not recognized") && !msg.includes("operable program or batch file")) {
+                    if (onStream) onStream(msg, 'error')
+                }
+                stderrData += msg
+            })
+
+            cmd.stdout.on('data', data => {
+                const msg = String(data)
+                let type = 'info'
+                if (msg.includes('default ->') || msg.includes('Now using node')) {
+                    type = 'success'
+                }
+                if (onStream) onStream(msg, type)
+                stdoutData += msg
+            })
+
+            cmd.on('exit', (code) => {
+                if (isFallback && executable === 'nvm') return;
+                
+                result = stdoutData.split('\n')
+
+                if (code !== 0) {
+                    if (handleFallback()) return;
+                    resolve({ result: [`Error: exited with ${code}`, stderrData], os: process.platform, mode: 'Error', command: args[0] })
+                } else {
+                    currentMode = isFallback ? 'nvm-sh' : 'nvm-windows'
+                    resolve({ result, os: process.platform, mode: currentMode, command: args[0] })
+                }
+            })
+        }
+
+        if (process.platform === 'win32' && safeArgs[0] === 'use' && currentMode !== 'nvm-sh') {
+            if (onStream) onStream('Requesting Administrator permissions to change system symlink...\n', 'system')
+            const cmdStr = `nvm ${safeArgs.join(' ')}`
+            sudo.exec(cmdStr, { name: 'NVM OnTheFly' }, (error, stdout, stderr) => {
+                if (stdout) {
+                    const msg = String(stdout)
+                    if (onStream) onStream(msg, msg.includes('Now using node') ? 'success' : 'info')
+                }
+                if (stderr && onStream) onStream(String(stderr), 'error')
+                
+                if (error) {
+                    resolve({ result: [`Error: ${error.message || error}`], os: process.platform, mode: 'Error', command: safeArgs[0] })
+                } else {
+                    resolve({ result: stdout ? String(stdout).split('\n') : [], os: process.platform, mode: 'nvm-windows', command: safeArgs[0] })
+                }
+            })
+        } else {
+            executeCmd('nvm', safeArgs, process.platform === 'win32')
+        }
+    })
+}
+
+export interface InstalledNode {
+    version: string
+    isActive: boolean
+}
+
+export async function getInstalledData(onStream?: (msg: string, type: string) => void): Promise<{ nodes: InstalledNode[], mode: Mode }> {
+    const res = await runCommand(['ls'], onStream)
+    
+    if (res.os === 'darwin') {
+         return { nodes: [], mode: res.mode }
+    }
+
+    let activeVersion = ''
+    
+    for (let i = 0; i < res.result.length; i++) {
+        const line = res.result[i]
+        // eslint-disable-next-line no-control-regex
+        const cleanLine = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim()
+        
+        if (res.mode === 'nvm-windows') {
+            if (cleanLine.startsWith('*')) {
+                const match = cleanLine.match(/\d+\.\d+\.\d+/)
+                if (match) activeVersion = `v${match[0]}`
+            }
+        } else {
+            if (cleanLine.startsWith('default ->')) {
+                const matches = cleanLine.match(/\d+\.\d+\.\d+/g)
+                if (matches && matches.length > 0) {
+                    activeVersion = `v${matches[matches.length - 1]}`
+                }
+            }
+            if (cleanLine === '---CURRENT---') {
+                // eslint-disable-next-line no-control-regex
+                const nextLine = res.result[i + 1]?.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim()
+                if (nextLine) {
+                    const match = nextLine.match(/\d+\.\d+\.\d+/)
+                    if (match) {
+                        activeVersion = `v${match[0]}`
+                    }
+                }
+            }
+        }
+    }
+
+    const installedNodes: InstalledNode[] = []
+
+    for (let i = 0; i < res.result.length; i++) {
+        const line = res.result[i]
+        // eslint-disable-next-line no-control-regex
+        const cleanLine = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim()
+        
+        if (cleanLine !== '') {
+            if (cleanLine.includes('->') && !cleanLine.startsWith('->')) continue
+
+            const matches = cleanLine.match(/\d+\.\d+\.\d+/)
+            if (!matches) continue
+
+            const version = `v${matches[0]}`
+
+            if (installedNodes.some(d => d.version === version)) continue
+
+            installedNodes.push({
+                version,
+                isActive: version === activeVersion
+            })
+        }
+    }
+    
+    return { nodes: installedNodes, mode: res.mode }
+}
+
+export async function getRemoteData(): Promise<any[]> {
+    try {
+        const res = await fetch('https://nodejs.org/dist/index.json')
+        return await res.json()
+    } catch (_e) {
+        return []
+    }
+}
+
+export async function installVersion(version: string, onStream?: (msg: string, type: string) => void): Promise<boolean> {
+    const res = await runCommand(['install', version], onStream)
+    return res.mode !== 'Error'
+}
+
+export async function uninstallVersion(version: string, onStream?: (msg: string, type: string) => void): Promise<boolean> {
+    const res = await runCommand(['uninstall', version], onStream)
+    return res.mode !== 'Error'
+}
+
+export async function useVersion(version: string, onStream?: (msg: string, type: string) => void): Promise<boolean> {
+    const res = await runCommand(['use', version], onStream)
+    return res.mode !== 'Error'
+}
+
+export async function migratePackages(version: string, fromVersion: string, onStream?: (msg: string, type: string) => void): Promise<boolean> {
+    const res = await runCommand(['install', version, `--reinstall-packages-from=${fromVersion}`], onStream)
+    return res.mode !== 'Error'
+}
+
+export function runNpmCommand(args: string[], onStream?: (msg: string, type: string) => void): Promise<{ result: string, error: string }> {
+    return new Promise((resolve) => {
+        let isFallback = currentMode === 'nvm-sh'
+        
+        let stdoutData = ''
+        let stderrData = ''
+        
+        if (onStream) onStream(`\n> npm ${args.join(' ')}\n`, 'system')
+
+        if (isFallback) {
+            const bashCmd = `source ~/.bash_profile 2>/dev/null || true; source ~/.bashrc 2>/dev/null || true; source ~/.nvm/nvm.sh 2>/dev/null || true; npm ${args.join(' ')}`
+            const cmd = spawn('bash', ['-c', bashCmd], { shell: false })
+            cmd.stdout.on('data', d => {
+                const msg = String(d)
+                stdoutData += msg
+                if (onStream) onStream(msg, 'info')
+            })
+            cmd.stderr.on('data', d => {
+                const msg = String(d)
+                stderrData += msg
+                if (onStream) onStream(msg, 'error')
+            })
+            cmd.on('error', (err) => {
+                resolve({ result: '', error: err.message })
+            })
+            cmd.on('exit', () => {
+                resolve({ result: stdoutData, error: stderrData })
+            })
+        } else {
+            // On Windows, if we just spawn 'npm', it might use a cached PATH resolution or C:\\Program Files\\nodejs\\npm.cmd
+            // which might still point to the old version in the current process if the symlink change hasn't fully propagated to the env.
+            // We can explicitly run the npm.cmd from the active version folder.
+            let npmExecutable = 'npm'
+            
+            // Immediately execute an async IIFE to find the active version and spawn
+            ;(async () => {
+                if (process.platform === 'win32') {
+                    try {
+                        const installed = await getInstalledData()
+                        const active = installed.nodes.find(n => n.isActive)
+                        if (active) {
+                            const appDataNvm = process.env.APPDATA ? join(process.env.APPDATA, 'nvm') : ''
+                            if (appDataNvm) {
+                                const npmPath = join(appDataNvm, active.version, 'npm.cmd')
+                                const fs = require('node:fs')
+                                if (fs.existsSync(npmPath)) {
+                                    npmExecutable = `"${npmPath}"`
+                                }
+                            }
+                        }
+                    } catch (_e) {
+                        // ignore error and fallback to 'npm'
+                    }
+                }
+                
+                const cmdStr = `${npmExecutable} ${args.join(' ')}`
+                const cmd = spawn(cmdStr, { shell: true })
+                cmd.stdout.on('data', d => {
+                    const msg = String(d)
+                    stdoutData += msg
+                    if (onStream) onStream(msg, 'info')
+                })
+                cmd.stderr.on('data', d => {
+                    const msg = String(d)
+                    stderrData += msg
+                    if (onStream) onStream(msg, 'error')
+                })
+                cmd.on('error', (err) => {
+                    resolve({ result: '', error: err.message })
+                })
+                cmd.on('exit', () => {
+                    resolve({ result: stdoutData, error: stderrData })
+                })
+            })();
+        }
+    })
+}

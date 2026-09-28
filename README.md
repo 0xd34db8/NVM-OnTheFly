@@ -2,7 +2,6 @@
 
 NVM: OnTheFly is a desktop GUI for managing Node Version Manager (NVM) environments NATIVELY
 
-
 > [!IMPORTANT]
 > This application does **not** act like a regular standalone manager that creates its own isolated folders, symlinks, or custom configuration files. Instead, it acts as a direct GUI wrapper that **hooks natively into your existing `nvm-sh` and `nvm-windows` installations**. Any change you make in the GUI is exactly what would happen if you typed it in the terminal, meaning zero lock-in and 100% compatibility with your current setup!
 
@@ -19,11 +18,6 @@ NVM: OnTheFly is a desktop GUI for managing Node Version Manager (NVM) environme
 
 ---
 
-### Current Bugs:
+### Currently known bugs:
 
-- **State Sync Issue**: The true global state fails to reflect properly on the frontend when updated via `USE`. 
-  - **Workaround Description**: 
-    - To fix the UI delay, we implemented a **client-side state override**. When a user clicks 'USE', the frontend (`NodeList.vue`) saves the `pendingUseVersion`.
-    - Once the backend replies with a success code via IPC, the frontend intentionally **skips** refreshing the state from the system (`await getInstalledData()`).
-    - Instead, it directly iterates through the local reactive table (`rows.value.installedData`) and manually sets `use = 1` for the clicked version and `use = 0` for all others.
-    - **Why it's unsafe**: This forces the UI to look correct immediately, but it introduces a risk of state desynchronization. If the backend silently fails to write the alias file, or if a user modifies the default version in a separate terminal window, the application UI will incorrectly display the overridden version as active. Consequently, the user can even incorrectly click 'uninstall' or 'use' on the true system default version (which is now incorrectly un-grayed in the UI).
+none

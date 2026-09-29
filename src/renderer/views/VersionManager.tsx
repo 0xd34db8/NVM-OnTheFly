@@ -5,20 +5,29 @@ import Preloader from '../components/Preloader'
 import TerminalConsole from './TerminalConsole'
 import ConfirmDialog from '../components/ConfirmDialog'
 
+function formatBytes(bytes: number, decimals = 2) {
+  if (!+bytes) return '0 Bytes'
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+}
+
 export default function VersionManager() {
-  const { installedData, remoteData, isFetching, fetchState, fetchRemoteData, showTerminalOnVersions, addLog } = useNvmStore()
-  const [tab, setTab] = useState<'installed' | 'remote'>('installed')
+  const { installedData, downloadData, isFetching, fetchState, fetchDownloadData, showTerminalOnVersions, addLog, nodeSizes, fetchNodeSizes } = useNvmStore()
+  const [tab, setTab] = useState<'installed' | 'download'>('installed')
   const [search, setSearch] = useState('')
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
   const [installedPage, setInstalledPage] = useState(1)
-  const [remotePage, setRemotePage] = useState(1)
+  const [downloadPage, setDownloadPage] = useState(1)
   const pageSize = 10
 
   // Reset pagination when searching
   useEffect(() => {
     setInstalledPage(1)
-    setRemotePage(1)
+    setDownloadPage(1)
   }, [search, tab])
 
 
@@ -49,6 +58,11 @@ export default function VersionManager() {
     } else {
       executeInstall(version, 'none')
     }
+  }
+
+  const handleCancelInstall = async () => {
+    await window.nvmAPI.cancelInstall()
+    setLoadingAction(null)
   }
 
   const executeInstall = async (version: string, source: string) => {
@@ -98,9 +112,17 @@ export default function VersionManager() {
   const paginatedInstalled = filteredInstalled.slice((installedPage - 1) * pageSize, installedPage * pageSize)
   const totalInstalledPages = Math.max(1, Math.ceil(filteredInstalled.length / pageSize))
 
-  const filteredRemote = remoteData.filter(v => v.version.includes(search))
-  const paginatedRemote = filteredRemote.slice((remotePage - 1) * pageSize, remotePage * pageSize)
-  const totalRemotePages = Math.max(1, Math.ceil(filteredRemote.length / pageSize))
+  const filteredDownload = downloadData.filter(v => v.version.includes(search))
+  const paginatedDownload = filteredDownload.slice((downloadPage - 1) * pageSize, downloadPage * pageSize)
+  const totalDownloadPages = Math.max(1, Math.ceil(filteredDownload.length / pageSize))
+
+  useEffect(() => {
+    const visibleNodes = tab === 'installed' ? paginatedInstalled : paginatedDownload
+    const versions = visibleNodes.map(n => n.version)
+    if (versions.length > 0) {
+      fetchNodeSizes(tab, versions)
+    }
+  }, [tab, installedPage, downloadPage, search, installedData, downloadData])
 
   return (
     <div className="relative flex flex-col h-full bg-card rounded-lg border border-border shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -116,8 +138,8 @@ export default function VersionManager() {
             Installed
           </button>
           <button
-            onClick={() => setTab('remote')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${tab === 'remote'
+            onClick={() => setTab('download')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${tab === 'download'
               ? 'bg-primary text-primary-foreground shadow-md'
               : 'hover:bg-secondary text-muted-foreground'
               }`}
@@ -131,7 +153,7 @@ export default function VersionManager() {
             onClick={async () => {
               setLoadingAction('refresh')
               await fetchState()
-              await fetchRemoteData()
+              await fetchDownloadData()
               setLoadingAction(null)
             }}
             disabled={isFetching || loadingAction !== null}
@@ -185,6 +207,11 @@ export default function VersionManager() {
                     <span className={`font-semibold ${node.isActive ? 'text-primary' : ''}`}>
                       {node.version}
                     </span>
+                    {nodeSizes[node.version] !== undefined && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {formatBytes(nodeSizes[node.version])}
+                      </span>
+                    )}
                     {node.isActive && (
                       <span className="text-[10px] uppercase tracking-wider bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">
                         Active
@@ -193,8 +220,8 @@ export default function VersionManager() {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-muted-foreground">
-                  {/* Local nodes don't easily have release date unless joined with remote data */}
-                  {remoteData.find(r => r.version === node.version)?.date || 'Unknown'}
+                  {/* Local nodes don't easily have release date unless joined with download data */}
+                  {downloadData.find(r => r.version === node.version)?.date || 'Unknown'}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -222,40 +249,58 @@ export default function VersionManager() {
               </tr>
             ))}
 
-            {tab === 'remote' && filteredRemote.length === 0 && (
+            {tab === 'download' && filteredDownload.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-6 py-12 text-center text-muted-foreground">
                   {isFetching || loadingAction === 'refresh' ? (
                     <div className="flex flex-col items-center justify-center gap-4">
                       <div className="text-primary scale-150"><Preloader /></div>
-                      <p>Loading remote versions...</p>
+                      <p>Loading download versions...</p>
                     </div>
                   ) : (
-                    "No remote versions found. Click Refresh to load versions."
+                    "No download versions found. Click Refresh to load versions."
                   )}
                 </td>
               </tr>
             )}
 
-            {tab === 'remote' && paginatedRemote.map(node => {
+            {tab === 'download' && paginatedDownload.map(node => {
               const isInstalled = installedData.some(i => i.version === node.version)
               return (
-                <tr key={node.version} className="transition-colors hover:bg-muted/30">
-                  <td className="px-6 py-4 font-medium">{node.version}</td>
+                <tr key={node.version} className="transition-colors hover:bg-muted/30 relative">
+                  <td className="px-6 py-4">
+                    <span className="font-medium">{node.version}</span>
+                    {nodeSizes[node.version] !== undefined && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {formatBytes(nodeSizes[node.version])}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-muted-foreground">{node.date}</td>
                   <td className="px-6 py-4 text-right">
                     <button
-                      onClick={() => handleInstall(node.version)}
-                      disabled={isInstalled || loadingAction !== null || isFetching}
-                      className={`flex ml-auto items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${isInstalled || isFetching || loadingAction !== null
+                      onClick={() => {
+                        if (loadingAction === `install-${node.version}`) {
+                          handleCancelInstall()
+                        } else {
+                          handleInstall(node.version)
+                        }
+                      }}
+                      disabled={isInstalled || (loadingAction !== null && loadingAction !== `install-${node.version}`) || isFetching}
+                      className={`flex ml-auto items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${isInstalled || isFetching || (loadingAction !== null && loadingAction !== `install-${node.version}`)
                         ? 'bg-secondary text-secondary-foreground opacity-50 cursor-not-allowed'
-                        : 'bg-brand text-white bg-blue-600 hover:bg-blue-700'
+                        : loadingAction === `install-${node.version}` ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'bg-brand text-white bg-blue-600 hover:bg-blue-700'
                         }`}
                     >
-                      {loadingAction === `install-${node.version}` ? <Preloader /> : <Download className="w-3.5 h-3.5" />}
-                      {isInstalled ? 'Installed' : 'Install'}
+                      {loadingAction === `install-${node.version}` ? <X className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
+                      {isInstalled ? 'Installed' : (loadingAction === `install-${node.version}` ? 'Cancel' : 'Install')}
                     </button>
                   </td>
+                  {loadingAction === `install-${node.version}` && (
+                    <div className="absolute bottom-0 left-0 h-1 bg-primary/20 w-full overflow-hidden">
+                      <div className="h-full bg-primary w-1/3 animate-[slide_1.5s_ease-in-out_infinite]" />
+                    </div>
+                  )}
                 </tr>
               )
             })}
@@ -264,11 +309,13 @@ export default function VersionManager() {
 
         {/* Pagination Controls */}
         {tab === 'installed' && filteredInstalled.length > pageSize && (
-          <div className="flex items-center justify-between px-6 py-3 border-t border-border sticky bottom-0 bg-background">
-            <span className="text-sm text-muted-foreground">
-              Showing {(installedPage - 1) * pageSize + 1} to {Math.min(installedPage * pageSize, filteredInstalled.length)} of {filteredInstalled.length}
-            </span>
-            <div className="flex gap-2">
+          <div className="grid grid-cols-3 items-center px-6 py-3 border-t border-border sticky bottom-0 bg-background">
+            <div className="flex justify-start">
+              <span className="text-sm text-muted-foreground">
+                Showing {(installedPage - 1) * pageSize + 1} to {Math.min(installedPage * pageSize, filteredInstalled.length)} of {filteredInstalled.length}
+              </span>
+            </div>
+            <div className="flex gap-2 justify-center">
               <button
                 onClick={() => setInstalledPage(p => Math.max(1, p - 1))}
                 disabled={installedPage === 1}
@@ -284,29 +331,46 @@ export default function VersionManager() {
                 Next
               </button>
             </div>
+            <div className="flex justify-end"></div>
           </div>
         )}
 
-        {tab === 'remote' && filteredRemote.length > pageSize && (
-          <div className="flex items-center justify-between px-6 py-3 border-t border-border sticky bottom-0 bg-background">
-            <span className="text-sm text-muted-foreground">
-              Showing {(remotePage - 1) * pageSize + 1} to {Math.min(remotePage * pageSize, filteredRemote.length)} of {filteredRemote.length}
-            </span>
-            <div className="flex gap-2">
+        {tab === 'download' && filteredDownload.length > pageSize && (
+          <div className="grid grid-cols-3 items-center px-6 py-3 border-t border-border sticky bottom-0 bg-background">
+            <div className="flex justify-start">
+              <span className="text-sm text-muted-foreground">
+                Showing {(downloadPage - 1) * pageSize + 1} to {Math.min(downloadPage * pageSize, filteredDownload.length)} of {filteredDownload.length}
+              </span>
+            </div>
+            <div className="flex gap-2 justify-center">
               <button
-                onClick={() => setRemotePage(p => Math.max(1, p - 1))}
-                disabled={remotePage === 1}
+                onClick={() => setDownloadPage(p => Math.max(1, p - 1))}
+                disabled={downloadPage === 1}
                 className="px-3 py-1 border border-border rounded-md text-sm disabled:opacity-50 hover:bg-muted"
               >
                 Previous
               </button>
               <button
-                onClick={() => setRemotePage(p => Math.min(totalRemotePages, p + 1))}
-                disabled={remotePage === totalRemotePages}
+                onClick={() => setDownloadPage(p => Math.min(totalDownloadPages, p + 1))}
+                disabled={downloadPage === totalDownloadPages}
                 className="px-3 py-1 border border-border rounded-md text-sm disabled:opacity-50 hover:bg-muted"
               >
                 Next
               </button>
+            </div>
+            <div className="flex justify-end">
+              {(showTerminalOnVersions || isTerminalOpen) && (
+                <button
+                  onClick={() => setIsTerminalOpen(!isTerminalOpen)}
+                  className={`p-3 rounded-full shadow-lg transition-all flex items-center justify-center ${isTerminalOpen
+                    ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    }`}
+                  title="Toggle Terminal Console"
+                >
+                  {isTerminalOpen ? <X className="w-5 h-5" /> : <Terminal className="w-5 h-5" />}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -367,18 +431,20 @@ export default function VersionManager() {
       {/* Floating Terminal Toggle */}
       {(showTerminalOnVersions || isTerminalOpen) && (
         <>
-          <div className="absolute bottom-6 right-6 z-40">
-            <button
-              onClick={() => setIsTerminalOpen(!isTerminalOpen)}
-              className={`p-3 rounded-full shadow-lg transition-all flex items-center justify-center ${isTerminalOpen
-                ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                }`}
-              title="Toggle Terminal Console"
-            >
-              {isTerminalOpen ? <X className="w-5 h-5" /> : <Terminal className="w-5 h-5" />}
-            </button>
-          </div>
+          {(tab !== 'download' || isTerminalOpen) && (
+            <div className="absolute bottom-6 right-6 z-40">
+              <button
+                onClick={() => setIsTerminalOpen(!isTerminalOpen)}
+                className={`p-3 rounded-full shadow-lg transition-all flex items-center justify-center ${isTerminalOpen
+                  ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  }`}
+                title="Toggle Terminal Console"
+              >
+                {isTerminalOpen ? <X className="w-5 h-5" /> : <Terminal className="w-5 h-5" />}
+              </button>
+            </div>
+          )}
 
           {/* Slide-up Terminal Drawer */}
           <div

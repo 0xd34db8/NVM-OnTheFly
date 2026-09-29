@@ -15,24 +15,27 @@ export interface InstalledNode {
 export interface NpmPackage {
   name: string
   version: string
+  sizeBytes?: number
 }
 
 interface NvmState {
   modes: Mode[]
   currentMode: Mode | null
   installedData: NodeVersion[]
-  remoteData: any[]
+  downloadData: any[]
   globalPackages: NpmPackage[]
   isFetching: boolean
   isFetchingPackages: boolean
   hasFetchedPackages: boolean
+  nodeSizes: Record<string, number>
   logs: { msg: string; type: string }[]
   theme: 'light' | 'dark'
   showTerminalOnVersions: boolean
   showTerminalOnPackages: boolean
   fetchState: () => Promise<void>
-  fetchRemoteData: () => Promise<void>
+  fetchDownloadData: () => Promise<void>
   fetchPackages: () => Promise<void>
+  fetchNodeSizes: (type: 'installed' | 'download', versions: string[]) => Promise<void>
   setMode: (mode: Mode) => void
   setGlobalPackages: (packages: NpmPackage[]) => void
   addLog: (log: { msg: string; type: string }) => void
@@ -47,11 +50,12 @@ export const useNvmStore = create<NvmState>((set, get) => ({
   modes: [],
   currentMode: null,
   installedData: [],
-  remoteData: [],
+  downloadData: [],
   globalPackages: [],
   isFetching: false,
   isFetchingPackages: false,
   hasFetchedPackages: false,
+  nodeSizes: {},
   logs: [],
   theme: (localStorage.getItem('nvm-theme') as 'light' | 'dark') || 'dark',
   showTerminalOnVersions: localStorage.getItem('show-terminal-versions') !== 'false',
@@ -73,12 +77,12 @@ export const useNvmStore = create<NvmState>((set, get) => ({
     }
   },
 
-  fetchRemoteData: async () => {
+  fetchDownloadData: async () => {
     try {
-      const remoteData = await window.nvmAPI.getRemoteData()
-      set({ remoteData })
+      const downloadData = await window.nvmAPI.getDownloadData()
+      set({ downloadData })
     } catch (e) {
-      console.error('Failed to fetch remote Node data', e)
+      console.error('Failed to fetch download Node data', e)
     }
   },
 
@@ -104,11 +108,37 @@ export const useNvmStore = create<NvmState>((set, get) => ({
           }
         }
       }
-      set({ globalPackages: parsed.filter(p => p.name !== 'npm' && p.name !== 'corepack'), hasFetchedPackages: true })
+      let globalPackages = parsed.filter(p => p.name !== 'npm' && p.name !== 'corepack')
+      set({ globalPackages, hasFetchedPackages: true })
+      
+      // Fetch sizes in the background without blocking the UI
+      try {
+        const sizes = await window.nvmAPI.getGlobalPackagesSizes(globalPackages.map(p => p.name))
+        globalPackages = globalPackages.map(p => ({
+          ...p,
+          sizeBytes: sizes[p.name]
+        }))
+        set({ globalPackages })
+      } catch (e) {
+        console.error('Failed to fetch package sizes', e)
+      }
     } catch (e) {
       console.error('Failed to fetch global packages', e)
     }
     set({ isFetchingPackages: false })
+  },
+
+  fetchNodeSizes: async (type, versions) => {
+    const currentSizes = get().nodeSizes
+    const missing = versions.filter(v => currentSizes[v] === undefined)
+    if (missing.length === 0) return
+    
+    try {
+      const sizes = await window.nvmAPI.getNodeSizes(type, missing)
+      set({ nodeSizes: { ...get().nodeSizes, ...sizes } })
+    } catch (e) {
+      console.error('Failed to fetch node sizes', e)
+    }
   },
 
   setMode: async (mode) => {
@@ -195,7 +225,7 @@ if (typeof window !== 'undefined' && window.nvmAPI) {
             }
           } else {
             // It's a new version we haven't seen yet in the stream
-            // Skip remote versions which are listed with aliases
+            // Skip download versions which are listed with aliases
             if (trimmedLine.includes('->') && !trimmedLine.startsWith('->')) continue
             
             currentInstalled.push({

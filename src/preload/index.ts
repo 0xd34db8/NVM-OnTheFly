@@ -17,12 +17,15 @@ try {
     getMode: () => ipcRenderer.invoke('nvm:getMode'),
     setMode: (mode: string) => ipcRenderer.send('nvm:setMode', mode),
     getInstalledData: () => ipcRenderer.invoke('nvm:getInstalledData'),
-    getRemoteData: () => ipcRenderer.invoke('nvm:getRemoteData'),
+    getDownloadData: () => ipcRenderer.invoke('nvm:getDownloadData'),
     installVersion: (version: string) => ipcRenderer.invoke('nvm:installVersion', version),
     uninstallVersion: (version: string) => ipcRenderer.invoke('nvm:uninstallVersion', version),
     useVersion: (version: string) => ipcRenderer.invoke('nvm:useVersion', version),
     migratePackages: (version: string, fromVersion: string) => ipcRenderer.invoke('nvm:migratePackages', version, fromVersion),
+    cancelInstall: () => ipcRenderer.invoke('nvm:cancelInstall'),
     runNpmCommand: (args: string[]) => ipcRenderer.invoke('nvm:runNpmCommand', args),
+    getGlobalPackagesSizes: (packages: string[]) => ipcRenderer.invoke('nvm:getGlobalPackagesSizes', packages),
+    getNodeSizes: (type: 'installed' | 'download', versions: string[]) => ipcRenderer.invoke('nvm:getNodeSizes', type, versions),
     onStream: (callback: (data: { msg: string, type: string }) => void) => {
       ipcRenderer.on('nvm:stream', (_event, data) => callback(data))
     },

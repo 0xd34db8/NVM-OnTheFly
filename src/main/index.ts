@@ -55,12 +55,13 @@ import {
   getMode,
   setMode,
   getInstalledData,
-  getRemoteData,
+  getDownloadData,
   installVersion,
   uninstallVersion,
   useVersion,
   migratePackages,
-  runNpmCommand
+  runNpmCommand,
+  cancelInstallProcess
 } from './nvm'
 
 app.whenReady().then(() => {
@@ -110,7 +111,7 @@ app.whenReady().then(() => {
     return getInstalledData(onStream)
   })
   
-  ipcMain.handle('nvm:getRemoteData', () => getRemoteData())
+  ipcMain.handle('nvm:getDownloadData', () => getDownloadData())
   
   ipcMain.handle('nvm:installVersion', (event, version: string) => {
     const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
@@ -135,6 +136,117 @@ app.whenReady().then(() => {
   ipcMain.handle('nvm:runNpmCommand', (event, args: string[]) => {
     const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
     return runNpmCommand(args, onStream)
+  })
+
+  ipcMain.handle('nvm:cancelInstall', () => {
+    cancelInstallProcess()
+  })
+
+  ipcMain.handle('nvm:getGlobalPackagesSizes', async (_, packages: string[]) => {
+    try {
+      const rootRes = await runNpmCommand(['root', '-g'])
+      const rootPath = rootRes.result.trim().replace(/\r?\n|\r/g, '')
+      if (!rootPath) return {}
+
+      const fs = require('fs/promises')
+      const path = require('path')
+
+      async function getDirSize(dirPath: string): Promise<number> {
+        let size = 0
+        try {
+          const files = await fs.readdir(dirPath, { withFileTypes: true })
+          const sizes = await Promise.all(files.map(async (file) => {
+            const filePath = path.join(dirPath, file.name)
+            if (file.isDirectory()) {
+              return await getDirSize(filePath)
+            } else {
+              const stat = await fs.stat(filePath)
+              return stat.size
+            }
+          }))
+          size = sizes.reduce((acc, curr) => acc + curr, 0)
+        } catch (e) {
+          // ignore
+        }
+        return size
+      }
+
+      const sizes: Record<string, number> = {}
+      await Promise.all(packages.map(async (pkg) => {
+        const pkgPath = path.join(rootPath, pkg)
+        sizes[pkg] = await getDirSize(pkgPath)
+      }))
+
+      return sizes
+    } catch (e) {
+      console.error('Failed to get package sizes:', e)
+      return {}
+    }
+  })
+
+  ipcMain.handle('nvm:getNodeSizes', async (_, type: 'installed' | 'download', versions: string[]) => {
+    try {
+      const sizes: Record<string, number> = {}
+      if (type === 'installed') {
+        const mode = getMode()
+
+        let nvmRoot = ''
+        if (mode === 'nvm-windows') {
+          const appData = process.env.APPDATA
+          nvmRoot = appData ? require('node:path').join(appData, 'nvm') : ''
+        } else {
+          const home = process.env.HOME || process.env.USERPROFILE
+          nvmRoot = home ? require('node:path').join(home, '.nvm', 'versions', 'node') : ''
+        }
+        if (!nvmRoot) return {}
+
+        const fs = require('node:fs/promises')
+        const path = require('node:path')
+
+        async function getDirSize(dirPath: string): Promise<number> {
+          let size = 0
+          try {
+            const files = await fs.readdir(dirPath, { withFileTypes: true })
+            const folderSizes = await Promise.all(files.map(async (file) => {
+              const filePath = path.join(dirPath, file.name)
+              if (file.isDirectory()) {
+                return await getDirSize(filePath)
+              } else {
+                const stat = await fs.stat(filePath)
+                return stat.size
+              }
+            }))
+            size = folderSizes.reduce((acc, curr) => acc + curr, 0)
+          } catch (e) { }
+          return size
+        }
+
+        await Promise.all(versions.map(async (v) => {
+          // nvm-windows names folders without 'v', e.g., '20.0.0'
+          const folderName = mode === 'nvm-windows' ? v.replace(/^v/, '') : v
+          sizes[v] = await getDirSize(path.join(nvmRoot, folderName))
+        }))
+      } else if (type === 'download') {
+        const platform = process.platform === 'win32' ? 'win' : (process.platform === 'darwin' ? 'darwin' : 'linux')
+        const arch = process.arch === 'x64' ? 'x64' : (process.arch === 'arm64' ? 'arm64' : 'x86')
+        const ext = platform === 'win' ? 'zip' : 'tar.xz'
+        
+        await Promise.all(versions.map(async (v) => {
+          try {
+            const url = `https://nodejs.org/dist/${v}/node-${v}-${platform}-${arch}.${ext}`
+            const res = await fetch(url, { method: 'HEAD' })
+            if (res.ok) {
+              const contentLength = res.headers.get('content-length')
+              if (contentLength) sizes[v] = parseInt(contentLength, 10)
+            }
+          } catch (e) { }
+        }))
+      }
+      return sizes
+    } catch (e) {
+      console.error('Failed to get node sizes:', e)
+      return {}
+    }
   })
 })
 

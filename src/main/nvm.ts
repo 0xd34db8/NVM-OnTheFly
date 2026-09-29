@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, exec, ChildProcess } from 'node:child_process'
 import * as sudo from 'sudo-prompt'
 import { join } from 'node:path'
 
@@ -69,6 +69,19 @@ export interface NvmCommandResult {
     command: string
 }
 
+let activeInstallProcess: ChildProcess | null = null;
+
+export function cancelInstallProcess() {
+    if (activeInstallProcess && activeInstallProcess.pid) {
+        if (process.platform === 'win32') {
+            exec(`taskkill /pid ${activeInstallProcess.pid} /f /t`);
+        } else {
+            activeInstallProcess.kill('SIGKILL');
+        }
+        activeInstallProcess = null;
+    }
+}
+
 export function runCommand(args: string[], onStream?: (msg: string, type: string) => void): Promise<NvmCommandResult> {
     return new Promise((resolve) => {
         let result: string[] = []
@@ -87,6 +100,9 @@ export function runCommand(args: string[], onStream?: (msg: string, type: string
 
         const executeCmd = (executable: string, cmdArgs: string[], useShell: boolean) => {
             const cmd = spawn(executable, cmdArgs, { shell: useShell })
+            if (args[0] === 'install') {
+                activeInstallProcess = cmd;
+            }
             let stderrData = ''
             let stdoutData = ''
 
@@ -143,6 +159,9 @@ export function runCommand(args: string[], onStream?: (msg: string, type: string
             })
 
             cmd.on('exit', (code) => {
+                if (args[0] === 'install' && activeInstallProcess === cmd) {
+                    activeInstallProcess = null;
+                }
                 if (isFallback && executable === 'nvm') return;
                 
                 result = stdoutData.split('\n')
@@ -250,7 +269,7 @@ export async function getInstalledData(onStream?: (msg: string, type: string) =>
     return { nodes: installedNodes, mode: res.mode }
 }
 
-export async function getRemoteData(): Promise<any[]> {
+export async function getDownloadData(): Promise<any[]> {
     try {
         const res = await fetch('https://nodejs.org/dist/index.json')
         return await res.json()

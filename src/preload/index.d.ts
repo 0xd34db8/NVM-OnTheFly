@@ -16,12 +16,15 @@ declare global {
       getMode: () => Promise<Mode>
       setMode: (mode: Mode) => void
       getInstalledData: () => Promise<InstalledNode[]>
-      getRemoteData: () => Promise<any[]>
+      getDownloadData: () => Promise<any[]>
       installVersion: (version: string) => Promise<boolean>
       uninstallVersion: (version: string) => Promise<boolean>
       useVersion: (version: string) => Promise<boolean>
       migratePackages: (version: string, fromVersion: string) => Promise<boolean>
+      cancelInstall: () => Promise<void>
       runNpmCommand: (args: string[]) => Promise<{ result: string; error: string; code: number | null }>
+      getGlobalPackagesSizes: (packages: string[]) => Promise<Record<string, number>>
+      getNodeSizes: (type: 'installed' | 'download', versions: string[]) => Promise<Record<string, number>>
       onStream: (callback: (data: { msg: string; type: string }) => void) => void
       removeStreamListener: () => void
     }

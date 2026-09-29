@@ -12,11 +12,11 @@ import heroLight from './assets/img/Hero-Light.png'
 
 function App() {
   const [activeTab, setActiveTab] = useState('versions')
-  const { fetchState, fetchRemoteData, currentMode, modes, setMode, theme } = useNvmStore()
+  const { fetchState, fetchDownloadData, currentMode, modes, setMode, theme } = useNvmStore()
 
   useEffect(() => {
     fetchState()
-    fetchRemoteData()
+    fetchDownloadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -48,11 +48,10 @@ function App() {
                 <button
                   key={mode}
                   onClick={() => mode !== currentMode && setMode(mode)}
-                  className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold transition-colors ${
-                    currentMode === mode
+                  className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold transition-colors ${currentMode === mode
                       ? 'bg-primary/20 text-primary border border-primary/40 cursor-default'
                       : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80 cursor-pointer'
-                  }`}
+                    }`}
                 >
                   {mode}
                 </button>
@@ -86,10 +85,10 @@ function App() {
         {/* Sidebar */}
         <aside className="w-64 border-r border-border bg-card flex flex-col p-4 gap-2">
           <div className="mb-6 mt-2 flex justify-center">
-            <img 
-              src={theme === 'dark' ? heroDark : heroLight} 
-              alt="NVM OnTheFly" 
-              className="w-full max-w-[180px] h-auto object-contain" 
+            <img
+              src={theme === 'dark' ? heroDark : heroLight}
+              alt="NVM OnTheFly"
+              className="w-full max-w-[180px] h-auto object-contain"
             />
           </div>
           <div className="mb-4">
@@ -114,7 +113,7 @@ function App() {
             <nav className="flex flex-col gap-1">
               <SidebarItem
                 icon={<TerminalIcon className="w-4 h-4" />}
-                label="Console Drawer"
+                label="Console"
                 active={activeTab === 'console'}
                 onClick={() => setActiveTab('console')}
               />

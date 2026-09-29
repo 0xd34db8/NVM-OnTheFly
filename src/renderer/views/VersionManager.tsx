@@ -26,8 +26,12 @@ export default function VersionManager() {
   const handleUse = async (version: string) => {
     setLoadingAction(`use-${version}`)
     try {
-      await window.nvmAPI.useVersion(version)
-      await fetchState()
+      const success = await window.nvmAPI.useVersion(version)
+      if (!success) throw new Error('NVM command exited with an error.')
+      // We don't need to run nvm ls (fetchState) because the stream parser 
+      // instantly updates the active version in the UI. 
+      // We only need to reset packages so they refetch on the next tab visit.
+      useNvmStore.setState({ hasFetchedPackages: false })
     } catch (e: any) {
       addLog({ msg: `Failed to use version ${version}: ${e.message}`, type: 'error' })
       setIsTerminalOpen(true)
@@ -51,11 +55,13 @@ export default function VersionManager() {
     setLoadingAction(`install-${version}`)
     setMigratingVersion(null)
     try {
+      let success = false
       if (source === 'none') {
-        await window.nvmAPI.installVersion(version)
+        success = await window.nvmAPI.installVersion(version)
       } else {
-        await window.nvmAPI.migratePackages(version, source)
+        success = await window.nvmAPI.migratePackages(version, source)
       }
+      if (!success) throw new Error('NVM command exited with an error.')
       await fetchState()
     } catch (e: any) {
       addLog({ msg: `Failed to install version ${version}: ${e.message}`, type: 'error' })
@@ -77,7 +83,8 @@ export default function VersionManager() {
     setUninstallingVersion(null)
     setLoadingAction(`uninstall-${version}`)
     try {
-      await window.nvmAPI.uninstallVersion(version)
+      const success = await window.nvmAPI.uninstallVersion(version)
+      if (!success) throw new Error('NVM command exited with an error.')
       await fetchState()
     } catch (e: any) {
       addLog({ msg: `Failed to uninstall version ${version}: ${e.message}`, type: 'error' })
@@ -137,7 +144,7 @@ export default function VersionManager() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search By version"
+              placeholder="Search By Version"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-4 py-2 bg-background border border-border rounded-4xl text-sm focus:outline-none focus:ring-2 focus:ring-primary w-50 h-[38px]"
@@ -358,7 +365,7 @@ export default function VersionManager() {
       )}
 
       {/* Floating Terminal Toggle */}
-      {showTerminalOnVersions && (
+      {(showTerminalOnVersions || isTerminalOpen) && (
         <>
           <div className="absolute bottom-6 right-6 z-40">
             <button

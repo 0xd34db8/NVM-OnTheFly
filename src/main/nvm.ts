@@ -279,7 +279,7 @@ export async function migratePackages(version: string, fromVersion: string, onSt
     return res.mode !== 'Error'
 }
 
-export function runNpmCommand(args: string[], onStream?: (msg: string, type: string) => void): Promise<{ result: string, error: string }> {
+export function runNpmCommand(args: string[], onStream?: (msg: string, type: string) => void): Promise<{ result: string, error: string, code: number | null }> {
     return new Promise((resolve) => {
         let isFallback = currentMode === 'nvm-sh'
         
@@ -302,10 +302,10 @@ export function runNpmCommand(args: string[], onStream?: (msg: string, type: str
                 if (onStream) onStream(msg, 'error')
             })
             cmd.on('error', (err) => {
-                resolve({ result: '', error: err.message })
+                resolve({ result: '', error: err.message, code: null })
             })
-            cmd.on('exit', () => {
-                resolve({ result: stdoutData, error: stderrData })
+            cmd.on('exit', (code) => {
+                resolve({ result: stdoutData, error: stderrData, code })
             })
         } else {
             // On Windows, if we just spawn 'npm', it might use a cached PATH resolution or C:\\Program Files\\nodejs\\npm.cmd
@@ -347,10 +347,10 @@ export function runNpmCommand(args: string[], onStream?: (msg: string, type: str
                     if (onStream) onStream(msg, 'error')
                 })
                 cmd.on('error', (err) => {
-                    resolve({ result: '', error: err.message })
+                    resolve({ result: '', error: err.message, code: null })
                 })
-                cmd.on('exit', () => {
-                    resolve({ result: stdoutData, error: stderrData })
+                cmd.on('exit', (code) => {
+                    resolve({ result: stdoutData, error: stderrData, code })
                 })
             })();
         }

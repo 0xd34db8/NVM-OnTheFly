@@ -27,3 +27,9 @@ release
 
 
 _legacy/
+
+# Vite temporary config files
+vite.config.*.mjs
+vite.config.*.cjs
+*.vite.config.*.mjs
+*.vite.config.*.cjs

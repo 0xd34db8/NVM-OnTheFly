@@ -21,7 +21,7 @@ declare global {
       uninstallVersion: (version: string) => Promise<boolean>
       useVersion: (version: string) => Promise<boolean>
       migratePackages: (version: string, fromVersion: string) => Promise<boolean>
-      runNpmCommand: (args: string[]) => Promise<{ result: string; error: string }>
+      runNpmCommand: (args: string[]) => Promise<{ result: string; error: string; code: number | null }>
       onStream: (callback: (data: { msg: string; type: string }) => void) => void
       removeStreamListener: () => void
     }

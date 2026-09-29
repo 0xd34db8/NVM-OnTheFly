@@ -60,7 +60,10 @@ export const useNvmStore = create<NvmState>((set, get) => ({
   fetchState: async () => {
     set({ isFetching: true })
     try {
-      const modes = await window.nvmAPI.checkAvailableModes()
+      let modes = get().modes
+      if (modes.length === 0) {
+        modes = await window.nvmAPI.checkAvailableModes()
+      }
       // getMode is mostly a fallback now, getInstalledData gives the real execution mode
       const result = await window.nvmAPI.getInstalledData()
       set({ modes, currentMode: result.mode, installedData: result.nodes, isFetching: false, hasFetchedPackages: false })
@@ -154,5 +157,59 @@ if (typeof window !== 'undefined' && window.nvmAPI) {
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
     useNvmStore.getState().addLog({ msg: cleanMsg, type: data.type })
+    
+    // Fast state update based on stream output to make UI feel instant
+    const lines = cleanMsg.split('\n')
+    let foundNewVersion = false
+    const currentInstalled = [...useNvmStore.getState().installedData]
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      if (!trimmedLine) continue
+      
+      // Active version detection
+      if (trimmedLine.startsWith('default ->') || trimmedLine.startsWith('Now using node')) {
+        const match = trimmedLine.match(/v?\d+\.\d+\.\d+/)
+        if (match) {
+          const version = match[0].startsWith('v') ? match[0] : `v${match[0]}`
+          currentInstalled.forEach(v => v.isActive = v.version === version)
+          foundNewVersion = true
+        }
+      } 
+      // Installed nodes detection
+      else if (trimmedLine.startsWith('->') || trimmedLine.startsWith('*') || /^\s*v?\d+\.\d+\.\d+/.test(line)) {
+        const match = trimmedLine.match(/\d+\.\d+\.\d+/)
+        if (match) {
+          const version = `v${match[0]}`
+          const isActive = trimmedLine.startsWith('->') || trimmedLine.startsWith('*')
+          
+          if (isActive) {
+            currentInstalled.forEach(v => v.isActive = false)
+          }
+          
+          const existing = currentInstalled.find(v => v.version === version)
+          if (existing) {
+            if (isActive && !existing.isActive) {
+              existing.isActive = true
+              foundNewVersion = true
+            }
+          } else {
+            // It's a new version we haven't seen yet in the stream
+            // Skip remote versions which are listed with aliases
+            if (trimmedLine.includes('->') && !trimmedLine.startsWith('->')) continue
+            
+            currentInstalled.push({
+              version,
+              isActive
+            })
+            foundNewVersion = true
+          }
+        }
+      }
+    }
+    
+    if (foundNewVersion) {
+      useNvmStore.setState({ installedData: currentInstalled })
+    }
   })
 }

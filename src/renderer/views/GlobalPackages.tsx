@@ -31,7 +31,8 @@ export default function GlobalPackages() {
     setUninstallingPackage(null)
     setLoadingAction(`uninstall-${pkgName}`)
     try {
-      await window.nvmAPI.runNpmCommand(['uninstall', '-g', pkgName])
+      const res = await window.nvmAPI.runNpmCommand(['uninstall', '-g', pkgName])
+      if (res.code !== 0) throw new Error(res.error || 'NPM command failed.')
       await fetchPackages()
     } catch (e: any) {
       addLog({ msg: `Failed to uninstall package ${pkgName}: ${e.message}`, type: 'error' })
@@ -134,7 +135,7 @@ export default function GlobalPackages() {
       </div>
 
       {/* Floating Terminal Toggle */}
-      {showTerminalOnPackages && (
+      {(showTerminalOnPackages || isTerminalOpen) && (
         <>
           <div className="absolute bottom-6 right-6 z-40">
             <button

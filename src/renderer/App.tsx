@@ -12,7 +12,7 @@ import heroLight from './assets/img/Hero-Light.png'
 
 function App() {
   const [activeTab, setActiveTab] = useState('versions')
-  const { fetchState, fetchRemoteData, currentMode, theme } = useNvmStore()
+  const { fetchState, fetchRemoteData, currentMode, modes, setMode, theme } = useNvmStore()
 
   useEffect(() => {
     fetchState()
@@ -42,11 +42,31 @@ function App() {
         <div className="px-4 text-sm font-semibold tracking-wide text-muted-foreground flex items-center gap-3">
           <img src={logoIco} alt="Logo" className="w-4 h-4 opacity-80" />
           NVM: OnTheFly
-          {currentMode && (
-            <span className="text-[10px] uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">
-              {currentMode}
-            </span>
-          )}
+          <div className="flex gap-1.5 ml-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            {modes && modes.length > 0 ? (
+              modes.map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => mode !== currentMode && setMode(mode)}
+                  className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold transition-colors ${
+                    currentMode === mode
+                      ? 'bg-primary/20 text-primary border border-primary/40 cursor-default'
+                      : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80 cursor-pointer'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))
+            ) : currentMode === 'Error' ? (
+              <span className="text-[10px] uppercase tracking-wider bg-destructive/10 text-destructive border border-destructive/20 px-2 py-0.5 rounded-full font-bold">
+                No Engine Detected
+              </span>
+            ) : currentMode ? (
+              <span className="text-[10px] uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">
+                {currentMode}
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="flex h-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
           <button onClick={minimize} className="h-full px-4 hover:bg-secondary flex items-center justify-center transition-colors">

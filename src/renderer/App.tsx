@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Minus, Square, X, Home, Settings, Package, Terminal as TerminalIcon, Loader2 } from 'lucide-react'
+import { Minus, Square, X, Home, Settings, Package, Terminal as TerminalIcon, Loader2, Bookmark } from 'lucide-react'
 import VersionManager from './views/VersionManager'
 import GlobalPackages from './views/GlobalPackages'
 import TerminalConsole from './views/TerminalConsole'
 import SettingsView from './views/Settings'
+import AliasManager from './views/AliasManager'
 import { useNvmStore } from './store/nvmStore'
 
 import logoIco from './assets/img/logo-32x32.ico'
@@ -17,6 +18,14 @@ function App() {
   useEffect(() => {
     fetchState()
     fetchDownloadData()
+    
+    window.nvmAPI.onRefreshRequested(() => {
+      fetchState()
+    })
+    
+    return () => {
+      window.nvmAPI.removeRefreshListener()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -111,6 +120,12 @@ function App() {
                 active={activeTab === 'packages'}
                 onClick={() => setActiveTab('packages')}
               />
+              <SidebarItem
+                icon={<Bookmark className="w-4 h-4" />}
+                label="Aliases"
+                active={activeTab === 'aliases'}
+                onClick={() => setActiveTab('aliases')}
+              />
             </nav>
           </div>
           <div className="mb-4 flex-1 flex flex-col justify-end">
@@ -138,6 +153,7 @@ function App() {
         <main className="flex-1 overflow-hidden bg-background p-6">
           {activeTab === 'versions' && <VersionManager />}
           {activeTab === 'packages' && <GlobalPackages />}
+          {activeTab === 'aliases' && <AliasManager />}
           {activeTab === 'console' && <TerminalConsole />}
           {activeTab === 'settings' && <SettingsView />}
         </main>

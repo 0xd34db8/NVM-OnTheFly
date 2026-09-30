@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNvmStore } from '../store/nvmStore'
-import { Download, Trash2, Play, RefreshCw, Search, Terminal, X, ChevronRight, ChevronDown, Loader2 } from 'lucide-react'
+import { Download, Trash2, Play, RefreshCw, Search, Terminal, X, ChevronRight, ChevronDown, Loader2, FolderSearch } from 'lucide-react'
 import Preloader from '../components/Preloader'
 import TerminalConsole from './TerminalConsole'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -16,18 +16,21 @@ function formatBytes(bytes: number, decimals = 2) {
 
 export default function VersionManager() {
   const { installedData, downloadData, isFetching, fetchState, fetchDownloadData, showTerminalOnVersions, addLog, nodeSizes, fetchNodeSizes } = useNvmStore()
-  const [tab, setTab] = useState<'installed' | 'download'>('installed')
+  const [tab, setTab] = useState<'installed' | 'download' | 'project'>('installed')
+  const [projectData, setProjectData] = useState<{ requiredVersion: string | null; source: string | null; dependencies: { name: string, version: string, size?: number, isDev: boolean }[], dirPath: string } | null>(null)
   const [search, setSearch] = useState('')
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
   const [installedPage, setInstalledPage] = useState(1)
   const [downloadPage, setDownloadPage] = useState(1)
+  const [selectedVersions, setSelectedVersions] = useState<string[]>([])
   const pageSize = 10
 
   // Reset pagination when searching
   useEffect(() => {
     setInstalledPage(1)
     setDownloadPage(1)
+    setSelectedVersions([])
   }, [search, tab])
 
   // Clear loading action instantly when the stream parser updates installedData
@@ -160,9 +163,33 @@ export default function VersionManager() {
     try {
       const success = await window.nvmAPI.uninstallVersion(version)
       if (!success) throw new Error('NVM command exited with an error.')
-      // No need to run fetchState() as stream parser updates state instantly
+      setSelectedVersions(prev => prev.filter(v => v !== version))
     } catch (e: any) {
       addLog({ msg: `Failed to uninstall version ${version}: ${e.message}`, type: 'error' })
+      setIsTerminalOpen(true)
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const handleBatchUninstall = async () => {
+    if (selectedVersions.length === 0) return
+    if (!window.confirm(`Are you sure you want to uninstall ${selectedVersions.length} selected version(s)?`)) return
+
+    setLoadingAction('batch-uninstall')
+    try {
+      for (const version of selectedVersions) {
+        const isActive = installedData.find(i => i.isActive)?.version === version
+        if (isActive) {
+          addLog({ msg: `Skipping active version ${version}`, type: 'info' })
+          continue
+        }
+        await window.nvmAPI.uninstallVersion(version)
+      }
+      setSelectedVersions([])
+      window.alert('Batch uninstall completed!')
+    } catch (e: any) {
+      addLog({ msg: `Batch uninstall failed: ${e.message}`, type: 'error' })
       setIsTerminalOpen(true)
     } finally {
       setLoadingAction(null)
@@ -185,8 +212,37 @@ export default function VersionManager() {
     }
   }, [tab, installedPage, downloadPage, search, installedData, downloadData])
 
+  const handleDetectProject = async (path?: string) => {
+    try {
+      const dirPath = path || await window.nvmAPI.openDirectory()
+      if (!dirPath) return
+      
+      setTab('project')
+      setLoadingAction('detecting')
+      const res = await window.nvmAPI.detectProjectVersion(dirPath)
+      
+      setProjectData({ ...res, dirPath })
+      setLoadingAction(null)
+    } catch (e) {
+      console.error(e)
+      setLoadingAction(null)
+    }
+  }
+
   return (
-    <div className="relative flex flex-col h-full bg-card rounded-lg border border-border shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div 
+      className="relative flex flex-col h-full bg-card rounded-lg border border-border shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+      onDrop={async (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const path = e.dataTransfer.files[0]?.path
+        if (path) handleDetectProject(path)
+      }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+    >
       <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
         <div className="flex gap-2">
           <button
@@ -206,6 +262,15 @@ export default function VersionManager() {
               }`}
           >
             Download
+          </button>
+          <button
+            onClick={() => setTab('project')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${tab === 'project'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'hover:bg-secondary text-muted-foreground'
+              }`}
+          >
+            Project
           </button>
         </div>
 
@@ -237,18 +302,149 @@ export default function VersionManager() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-muted/50 sticky top-0 backdrop-blur-md">
-            <tr>
-              <th className="px-6 py-3 font-medium text-muted-foreground w-1/3">Version</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground w-1/3">Release Date</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-right">Actions</th>
-            </tr>
-          </thead>
+        {tab === 'project' && (
+          <div className="p-8 h-full flex flex-col">
+            <div 
+              onClick={() => handleDetectProject()}
+              className="border-2 border-dashed border-border hover:border-primary/50 transition-colors rounded-xl p-12 flex flex-col items-center justify-center cursor-pointer bg-muted/10 hover:bg-muted/30 mb-8"
+            >
+              {loadingAction === 'detecting' ? (
+                <div className="text-primary scale-150 mb-4"><Preloader /></div>
+              ) : (
+                <FolderSearch className="w-12 h-12 text-muted-foreground mb-4" />
+              )}
+              <h3 className="text-lg font-semibold mb-2">Drag & Drop Project Folder Here</h3>
+              <p className="text-sm text-muted-foreground">Or click to browse and select a folder</p>
+            </div>
+
+            {projectData && (
+              <div className="bg-card rounded-lg border border-border shadow-sm p-6 flex flex-col gap-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Project Path</h3>
+                  <p className="font-mono text-sm">{projectData.dirPath}</p>
+                </div>
+
+                {projectData.requiredVersion && (
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Required Node.js</h3>
+                      <p className="text-lg font-medium flex items-center gap-2">
+                        {projectData.requiredVersion}
+                        <span className="text-xs font-normal text-muted-foreground px-2 py-0.5 bg-background rounded-full border border-border">
+                          via {projectData.source}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      {(() => {
+                        const version = projectData.requiredVersion.replace(/^v/, '').trim()
+                        const isInstalled = installedData.some(i => i.version === version)
+                        const isActive = installedData.find(i => i.isActive)?.version === version
+                        
+                        if (isActive) {
+                          return <span className="px-4 py-2 bg-primary/20 text-primary rounded-md font-bold text-sm">Active Engine</span>
+                        } else if (isInstalled) {
+                          return (
+                            <button
+                              onClick={() => handleUse(version)}
+                              disabled={loadingAction !== null}
+                              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors"
+                            >
+                              {loadingAction === `use-${version}` ? <Preloader /> : <Play className="w-4 h-4" />}
+                              Switch to {version}
+                            </button>
+                          )
+                        } else {
+                          return (
+                            <button
+                              onClick={() => handleInstall(version)}
+                              disabled={loadingAction !== null}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+                            >
+                              {loadingAction === `install-${version}` ? <Preloader /> : <Download className="w-4 h-4" />}
+                              Install {version}
+                            </button>
+                          )
+                        }
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {projectData.dependencies && projectData.dependencies.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Project Dependencies</h3>
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wider">
+                          <tr>
+                            <th className="px-4 py-3 font-medium">Package</th>
+                            <th className="px-4 py-3 font-medium text-center">Type</th>
+                            <th className="px-4 py-3 font-medium">Version</th>
+                            <th className="px-4 py-3 font-medium text-right">Local Size</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {projectData.dependencies.map(dep => (
+                            <tr key={dep.name} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-3 font-medium">{dep.name}</td>
+                              <td className="px-4 py-3 text-muted-foreground text-center">
+                                {dep.isDev ? (
+                                  <span className="px-2 py-0.5 bg-secondary/80 rounded-md text-[10px]">Dev</span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[10px]">Dep</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 font-mono text-xs">{dep.version}</td>
+                              <td className="px-4 py-3 text-right text-muted-foreground">
+                                {dep.size !== undefined && dep.size !== null ? (
+                                  dep.size > 0 ? formatBytes(dep.size) : 'Not Installed'
+                                ) : (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin ml-auto" />
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab !== 'project' && (
+        <div className="flex-1 overflow-auto relative">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-muted/50 sticky top-0 backdrop-blur-md z-10">
+              <tr>
+                {tab === 'installed' && (
+                  <th className="px-6 py-3 w-12">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary bg-background"
+                      checked={selectedVersions.length > 0 && selectedVersions.length === paginatedInstalled.filter(i => !i.isActive).length && paginatedInstalled.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedVersions(paginatedInstalled.filter(i => !i.isActive).map(i => i.version))
+                        } else {
+                          setSelectedVersions([])
+                        }
+                      }}
+                    />
+                  </th>
+                )}
+                <th className="px-6 py-3 font-medium text-muted-foreground w-1/3">Version</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground w-1/3">Release Date</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Actions</th>
+              </tr>
+            </thead>
           <tbody className="divide-y divide-border">
             {tab === 'installed' && filteredInstalled.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-6 py-12 text-center text-muted-foreground">
+                <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
                   {isFetching || loadingAction === 'refresh' ? (
                     <div className="flex flex-col items-center justify-center gap-4">
                       <div className="text-primary scale-150"><Preloader /></div>
@@ -262,7 +458,22 @@ export default function VersionManager() {
             )}
 
             {tab === 'installed' && paginatedInstalled.map(node => (
-              <tr key={node.version} className={`transition-colors hover:bg-muted/30 ${node.isActive ? 'bg-primary/5' : ''}`}>
+              <tr key={node.version} className={`transition-colors hover:bg-muted/30 ${node.isActive ? 'bg-primary/5' : ''} ${selectedVersions.includes(node.version) ? 'bg-muted/50' : ''}`}>
+                <td className="px-6 py-4">
+                  <input
+                    type="checkbox"
+                    disabled={node.isActive}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary bg-background disabled:opacity-50"
+                    checked={selectedVersions.includes(node.version)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedVersions(prev => [...prev, node.version])
+                      } else {
+                        setSelectedVersions(prev => prev.filter(v => v !== node.version))
+                      }
+                    }}
+                  />
+                </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     <span className={`font-semibold ${node.isActive ? 'text-primary' : ''}`}>
@@ -367,6 +578,8 @@ export default function VersionManager() {
             })}
           </tbody>
         </table>
+        </div>
+        )}
 
         {/* Pagination Controls */}
         {tab === 'installed' && filteredInstalled.length > pageSize && (
@@ -435,8 +648,26 @@ export default function VersionManager() {
             </div>
           </div>
         )}
-      </div>
 
+        {/* Batch Operations Bar */}
+        {tab === 'installed' && selectedVersions.length > 0 && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-background border border-border shadow-lg rounded-full px-6 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4 z-20">
+            <span className="text-sm font-medium">
+              {selectedVersions.length} version{selectedVersions.length > 1 ? 's' : ''} selected
+            </span>
+            <div className="h-4 w-px bg-border"></div>
+            <button
+              onClick={handleBatchUninstall}
+              disabled={loadingAction !== null}
+              className="flex items-center gap-2 text-sm font-medium text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
+            >
+              {loadingAction === 'batch-uninstall' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Uninstall Selected
+            </button>
+          </div>
+        )}
+
+        </div>
       {/* Migration Dialog */}
       {migratingVersion && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in zoom-in duration-200">

@@ -24,9 +24,11 @@ interface NvmState {
   installedData: NodeVersion[]
   downloadData: any[]
   globalPackages: NpmPackage[]
+  aliases: { name: string, version: string }[]
   isFetching: boolean
   isFetchingPackages: boolean
   hasFetchedPackages: boolean
+  hasFetchedAliases: boolean
   nodeSizes: Record<string, number>
   logs: { msg: string; type: string }[]
   theme: 'light' | 'dark'
@@ -35,6 +37,7 @@ interface NvmState {
   fetchState: () => Promise<void>
   fetchDownloadData: () => Promise<void>
   fetchPackages: () => Promise<void>
+  fetchAliases: () => Promise<void>
   fetchNodeSizes: (type: 'installed' | 'download', versions: string[]) => Promise<void>
   setMode: (mode: Mode) => void
   setGlobalPackages: (packages: NpmPackage[]) => void
@@ -52,9 +55,11 @@ export const useNvmStore = create<NvmState>((set, get) => ({
   installedData: [],
   downloadData: [],
   globalPackages: [],
+  aliases: [],
   isFetching: false,
   isFetchingPackages: false,
   hasFetchedPackages: false,
+  hasFetchedAliases: false,
   nodeSizes: {},
   logs: [],
   theme: (localStorage.getItem('nvm-theme') as 'light' | 'dark') || 'dark',
@@ -126,6 +131,15 @@ export const useNvmStore = create<NvmState>((set, get) => ({
       console.error('Failed to fetch global packages', e)
     }
     set({ isFetchingPackages: false })
+  },
+
+  fetchAliases: async () => {
+    try {
+      const res = await window.nvmAPI.listAliases()
+      set({ aliases: res, hasFetchedAliases: true })
+    } catch (e: any) {
+      get().addLog({ msg: `Failed to fetch aliases: ${e.message}`, type: 'error' })
+    }
   },
 
   fetchNodeSizes: async (type, versions) => {

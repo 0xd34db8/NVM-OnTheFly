@@ -57,31 +57,30 @@ export default function SettingsView() {
           <section className="mb-8">
             <h3 className="text-lg font-medium mb-4">Features</h3>
             <div className="bg-background rounded-xl border border-border p-4 shadow-sm flex flex-col gap-4">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={showTerminalOnVersions}
-                  onChange={(e) => setShowTerminalOnVersions(e.target.checked)}
-                  className="w-4 h-4 accent-primary rounded border-border"
-                />
-                <div>
-                  <div className="font-medium text-sm">Terminal Button on Version Manager</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Show the floating terminal button on the Version Manager page</div>
+              <div>
+                <div className="font-medium text-sm mb-3">Show terminal button on:</div>
+                <div className="flex flex-col gap-3 ml-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={showTerminalOnVersions}
+                      onChange={(e) => setShowTerminalOnVersions(e.target.checked)}
+                      className="w-4 h-4 accent-primary rounded border-border"
+                    />
+                    <span className="text-sm">Version Manager tab</span>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={showTerminalOnPackages}
+                      onChange={(e) => setShowTerminalOnPackages(e.target.checked)}
+                      className="w-4 h-4 accent-primary rounded border-border"
+                    />
+                    <span className="text-sm">Global Packages tab</span>
+                  </label>
                 </div>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={showTerminalOnPackages}
-                  onChange={(e) => setShowTerminalOnPackages(e.target.checked)}
-                  className="w-4 h-4 accent-primary rounded border-border"
-                />
-                <div>
-                  <div className="font-medium text-sm">Terminal Button on Global Packages</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Show the floating terminal button on the Global Packages page</div>
-                </div>
-              </label>
+              </div>
             </div>
           </section>
 

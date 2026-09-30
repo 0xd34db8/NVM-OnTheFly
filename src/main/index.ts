@@ -27,12 +27,12 @@ function createWindow(): void {
   }
 }
 
-function createTray() {
-  const iconPath = join(__dirname, '../../src/renderer/assets/img/logo-32x32.ico')
-  const icon = nativeImage.createFromPath(iconPath)
-  const tray = new Tray(icon)
+let appTray: Tray | null = null
 
-  const contextMenu = Menu.buildFromTemplate([
+export async function updateTrayMenu() {
+  if (!appTray) return
+
+  const menuTemplate: any[] = [
     { label: 'Open NVM: OnTheFly', click: () => {
         const win = BrowserWindow.getAllWindows()[0]
         if (win) {
@@ -42,12 +42,44 @@ function createTray() {
           createWindow()
         }
     }},
-    { type: 'separator' },
-    { label: 'Quit', click: () => app.quit() }
-  ])
+    { type: 'separator' }
+  ]
 
-  tray.setToolTip('NVM: OnTheFly')
-  tray.setContextMenu(contextMenu)
+  try {
+    const installed = await getInstalledData()
+    if (installed && installed.length > 0) {
+      menuTemplate.push({ label: 'Switch Node Version', enabled: false })
+      installed.forEach(node => {
+        menuTemplate.push({
+          label: `${node.isActive ? '✓ ' : '  '} v${node.version}`,
+          type: 'normal',
+          click: async () => {
+            if (!node.isActive) {
+              await useVersion(node.version)
+              updateTrayMenu()
+              // Send event to renderer to refresh UI if open
+              BrowserWindow.getAllWindows().forEach(w => w.webContents.send('nvm:refresh-requested'))
+            }
+          }
+        })
+      })
+      menuTemplate.push({ type: 'separator' })
+    }
+  } catch (e) {
+    // Ignore error if nvm is not ready
+  }
+
+  menuTemplate.push({ label: 'Quit', click: () => app.quit() })
+  appTray.setContextMenu(Menu.buildFromTemplate(menuTemplate))
+}
+
+function createTray() {
+  const iconPath = join(__dirname, '../../src/renderer/assets/img/logo-32x32.ico')
+  const icon = nativeImage.createFromPath(iconPath)
+  appTray = new Tray(icon)
+
+  appTray.setToolTip('NVM: OnTheFly')
+  updateTrayMenu()
 }
 
 import {
@@ -62,8 +94,33 @@ import {
   migratePackages,
   getPackagesForVersion,
   runNpmCommand,
-  cancelInstallProcess
+  cancelInstallProcess,
+  getAliases,
+  setAlias,
+  deleteAlias
 } from './nvm'
+
+async function getDirSize(dirPath: string): Promise<number> {
+  let size = 0
+  const fs = require('fs/promises')
+  const path = require('path')
+  try {
+    const files = await fs.readdir(dirPath, { withFileTypes: true })
+    const sizes = await Promise.all(files.map(async (file: any) => {
+      const filePath = path.join(dirPath, file.name)
+      if (file.isDirectory()) {
+        return await getDirSize(filePath)
+      } else {
+        const stat = await fs.stat(filePath)
+        return stat.size
+      }
+    }))
+    size = sizes.reduce((acc: number, curr: number) => acc + curr, 0)
+  } catch (e) {
+    // ignore
+  }
+  return size
+}
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron')
@@ -114,24 +171,99 @@ app.whenReady().then(() => {
   
   ipcMain.handle('nvm:getDownloadData', () => getDownloadData())
   
-  ipcMain.handle('nvm:installVersion', (event, version: string) => {
-    const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
-    return installVersion(version, onStream)
+  ipcMain.handle('dialog:openDirectory', async () => {
+    const { dialog } = require('electron')
+    const result = await dialog.showOpenDialog(BrowserWindow.getAllWindows()[0], {
+      properties: ['openDirectory']
+    })
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths[0]
+    }
+    return null
+  })
+
+  ipcMain.handle('nvm:detectProjectVersion', async (event, dirPath: string) => {
+    const fs = require('fs/promises')
+    const path = require('path')
+    let requiredVersion = null
+    let source = null
+    const dependencies: { name: string, version: string, size?: number, isDev: boolean }[] = []
+
+    let pkgObj: any = null
+
+    // Try to get package.json
+    try {
+      const pkgPath = path.join(dirPath, 'package.json')
+      const pkgContent = await fs.readFile(pkgPath, 'utf8')
+      pkgObj = JSON.parse(pkgContent)
+      if (pkgObj.engines && pkgObj.engines.node) {
+        requiredVersion = pkgObj.engines.node
+        source = 'package.json (engines.node)'
+      }
+    } catch (err) {}
+
+    // Try .nvmrc if no requiredVersion found yet
+    if (!requiredVersion) {
+      try {
+        const nvmrcPath = path.join(dirPath, '.nvmrc')
+        const nvmrcContent = await fs.readFile(nvmrcPath, 'utf8')
+        requiredVersion = nvmrcContent.trim()
+        source = '.nvmrc'
+      } catch (e) {}
+    }
+
+    if (pkgObj) {
+      const allDeps = []
+      if (pkgObj.dependencies) {
+        for (const [name, version] of Object.entries(pkgObj.dependencies)) {
+          allDeps.push({ name, version: String(version), isDev: false })
+        }
+      }
+      if (pkgObj.devDependencies) {
+        for (const [name, version] of Object.entries(pkgObj.devDependencies)) {
+          allDeps.push({ name, version: String(version), isDev: true })
+        }
+      }
+
+      await Promise.all(allDeps.map(async (dep) => {
+        const nodeModulesPath = path.join(dirPath, 'node_modules', dep.name)
+        const size = await getDirSize(nodeModulesPath)
+        dependencies.push({ ...dep, size })
+      }))
+    }
+
+    // sort alphabetically
+    dependencies.sort((a, b) => a.name.localeCompare(b.name))
+
+    return { requiredVersion, source, dependencies }
   })
   
-  ipcMain.handle('nvm:uninstallVersion', (event, version: string) => {
+  ipcMain.handle('nvm:installVersion', async (event, version: string) => {
     const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
-    return uninstallVersion(version, onStream)
+    const res = await installVersion(version, onStream)
+    updateTrayMenu()
+    return res
   })
   
-  ipcMain.handle('nvm:useVersion', (event, version: string) => {
+  ipcMain.handle('nvm:uninstallVersion', async (event, version: string) => {
     const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
-    return useVersion(version, onStream)
+    const res = await uninstallVersion(version, onStream)
+    updateTrayMenu()
+    return res
   })
   
-  ipcMain.handle('nvm:migratePackages', (event, version: string, fromVersion: string, packages?: string[]) => {
+  ipcMain.handle('nvm:useVersion', async (event, version: string) => {
     const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
-    return migratePackages(version, fromVersion, packages, onStream)
+    const res = await useVersion(version, onStream)
+    updateTrayMenu()
+    return res
+  })
+  
+  ipcMain.handle('nvm:migratePackages', async (event, version: string, fromVersion: string, packages?: string[]) => {
+    const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
+    const res = await migratePackages(version, fromVersion, packages, onStream)
+    updateTrayMenu()
+    return res
   })
   
   ipcMain.handle('nvm:getPackagesForVersion', (event, version: string) => {
@@ -141,6 +273,36 @@ app.whenReady().then(() => {
   ipcMain.handle('nvm:runNpmCommand', (event, args: string[]) => {
     const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
     return runNpmCommand(args, onStream)
+  })
+
+  ipcMain.handle('nvm:listAliases', async () => {
+    return getAliases()
+  })
+
+  ipcMain.handle('nvm:setAlias', async (event, name: string, version: string) => {
+    return setAlias(name, version)
+  })
+
+  ipcMain.handle('nvm:deleteAlias', async (event, name: string) => {
+    return deleteAlias(name)
+  })
+
+  ipcMain.handle('nvm:checkOutdatedPackages', async () => {
+    try {
+      const res = await runNpmCommand(['outdated', '-g', '--json'])
+      // npm outdated exits with 1 if there are outdated packages, 0 if everything is up to date.
+      if (res.result) {
+        return JSON.parse(res.result)
+      }
+      return {}
+    } catch (e) {
+      return {}
+    }
+  })
+
+  ipcMain.handle('nvm:cleanNpmCache', async () => {
+    const res = await runNpmCommand(['cache', 'clean', '--force'])
+    return res
   })
 
   ipcMain.handle('nvm:runCustomCommand', (event, command: string) => {
@@ -194,26 +356,6 @@ app.whenReady().then(() => {
 
       const fs = require('fs/promises')
       const path = require('path')
-
-      async function getDirSize(dirPath: string): Promise<number> {
-        let size = 0
-        try {
-          const files = await fs.readdir(dirPath, { withFileTypes: true })
-          const sizes = await Promise.all(files.map(async (file) => {
-            const filePath = path.join(dirPath, file.name)
-            if (file.isDirectory()) {
-              return await getDirSize(filePath)
-            } else {
-              const stat = await fs.stat(filePath)
-              return stat.size
-            }
-          }))
-          size = sizes.reduce((acc, curr) => acc + curr, 0)
-        } catch (e) {
-          // ignore
-        }
-        return size
-      }
 
       const sizes: Record<string, number> = {}
       await Promise.all(packages.map(async (pkg) => {

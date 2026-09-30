@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNvmStore } from '../store/nvmStore'
-import { Package, RefreshCw, Trash2, Terminal, X, Loader2 } from 'lucide-react'
+import { Package, RefreshCw, Trash2, Terminal, X, Loader2, ArrowUpCircle, DatabaseZap, AlertCircle } from 'lucide-react'
 import Preloader from '../components/Preloader'
 import TerminalConsole from './TerminalConsole'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -20,6 +20,10 @@ export default function GlobalPackages() {
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
   const [page, setPage] = useState(1)
   const pageSize = 12 // 3 columns * 4 rows
+
+  const [outdatedPackages, setOutdatedPackages] = useState<Record<string, { current: string, wanted: string, latest: string }> | null>(null)
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false)
+  const [isCleaningCache, setIsCleaningCache] = useState(false)
 
   // Reset page if packages change significantly
   useEffect(() => {
@@ -57,6 +61,68 @@ export default function GlobalPackages() {
     }
   }
 
+  const handleCheckUpdates = async () => {
+    setIsCheckingUpdates(true)
+    try {
+      const res = await window.nvmAPI.checkOutdatedPackages()
+      setOutdatedPackages(res)
+      
+      const outdatedCount = Object.keys(res).length
+      if (outdatedCount === 0) {
+        window.alert('All global packages are up to date!')
+      } else {
+        window.alert(`Found ${outdatedCount} package(s) with updates available.`)
+      }
+    } catch (e: any) {
+      addLog({ msg: `Failed to check for updates: ${e.message}`, type: 'error' })
+      setIsTerminalOpen(true)
+    } finally {
+      setIsCheckingUpdates(false)
+    }
+  }
+
+  const handleUpdate = async (pkgName: string, wantedVersion: string) => {
+    setLoadingAction(`update-${pkgName}`)
+    try {
+      const res = await window.nvmAPI.runNpmCommand(['install', '-g', `${pkgName}@${wantedVersion}`])
+      if (res.code !== 0) throw new Error(res.error || 'NPM command failed.')
+      
+      // Update UI instantly
+      useNvmStore.setState(state => ({
+        globalPackages: state.globalPackages.map(p => p.name === pkgName ? { ...p, version: wantedVersion, sizeBytes: undefined } : p)
+      }))
+      // Trigger a re-fetch of sizes for this package in the background by calling fetchPackages again
+      // Actually we can just let it be, or refresh entirely. Let's just remove it from outdated.
+      setOutdatedPackages(prev => {
+        if (!prev) return prev
+        const next = { ...prev }
+        delete next[pkgName]
+        return next
+      })
+      window.alert(`Package ${pkgName} updated to v${wantedVersion} successfully!`)
+    } catch (e: any) {
+      addLog({ msg: `Failed to update package ${pkgName}: ${e.message}`, type: 'error' })
+      setIsTerminalOpen(true)
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const handleCleanCache = async () => {
+    if (!window.confirm('Are you sure you want to clean the global NPM cache?')) return
+    setIsCleaningCache(true)
+    try {
+      const res = await window.nvmAPI.cleanNpmCache()
+      if (res.code !== 0) throw new Error(res.error || 'NPM command failed.')
+      window.alert('NPM Cache cleaned successfully!')
+    } catch (e: any) {
+      addLog({ msg: `Failed to clean NPM cache: ${e.message}`, type: 'error' })
+      setIsTerminalOpen(true)
+    } finally {
+      setIsCleaningCache(false)
+    }
+  }
+
   return (
     <div className="relative flex flex-col h-full bg-card rounded-lg border border-border shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
       <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
@@ -73,14 +139,34 @@ export default function GlobalPackages() {
             </span>
           )}
         </h2>
-        <button
-          onClick={fetchPackages}
-          disabled={isFetchingPackages || isFetching}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
-        >
-          {isFetchingPackages ? <Preloader /> : <RefreshCw className="w-4 h-4" />}
-          Refresh
-        </button>
+
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={handleCleanCache}
+            disabled={isCleaningCache || isFetching}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
+            title="Clean NPM Cache"
+          >
+            {isCleaningCache ? <Preloader /> : <DatabaseZap className="w-4 h-4 text-orange-500" />}
+            Clean Cache
+          </button>
+          <button
+            onClick={handleCheckUpdates}
+            disabled={isCheckingUpdates || isFetching}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            {isCheckingUpdates ? <Preloader /> : <ArrowUpCircle className="w-4 h-4" />}
+            Check Updates
+          </button>
+          <button
+            onClick={fetchPackages}
+            disabled={isFetchingPackages || isFetching}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
+          >
+            {isFetchingPackages ? <Preloader /> : <RefreshCw className="w-4 h-4" />}
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 p-4 overflow-auto">
@@ -126,14 +212,27 @@ export default function GlobalPackages() {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleUninstall(pkg.name)}
-                    disabled={loadingAction !== null}
-                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                    title="Uninstall Package"
-                  >
-                    {loadingAction === `uninstall-${pkg.name}` ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  </button>
+                  <div className="flex gap-1 items-center">
+                    {outdatedPackages && outdatedPackages[pkg.name] && (
+                      <button
+                        onClick={() => handleUpdate(pkg.name, outdatedPackages[pkg.name].wanted)}
+                        disabled={loadingAction !== null}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white rounded-md transition-colors text-xs font-semibold mr-2 border border-blue-600/20"
+                        title={`Update to ${outdatedPackages[pkg.name].wanted}`}
+                      >
+                        {loadingAction === `update-${pkg.name}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
+                        Update
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleUninstall(pkg.name)}
+                      disabled={loadingAction !== null}
+                      className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                      title="Uninstall Package"
+                    >
+                      {loadingAction === `uninstall-${pkg.name}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

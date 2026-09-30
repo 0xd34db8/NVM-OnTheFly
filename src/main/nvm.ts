@@ -440,3 +440,40 @@ export function runNpmCommand(args: string[], onStream?: (msg: string, type: str
         }
     })
 }
+
+
+export async function getAliases(): Promise<{ name: string, version: string }[]> {
+    if (currentMode === 'nvm-sh') {
+        const res = await runCommand(['alias'])
+        const aliases: { name: string, version: string }[] = []
+        for (const line of res.result) {
+            // eslint-disable-next-line no-control-regex
+            const cleanLine = line.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim()
+            if (cleanLine && cleanLine.includes('->')) {
+                const parts = cleanLine.split('->')
+                const name = parts[0].trim()
+                let version = parts[1].trim()
+                if (version.includes(' ')) {
+                    version = version.split(' ')[0]
+                }
+                aliases.push({ name, version })
+            }
+        }
+        return aliases
+    } else {
+        // nvm-windows does not natively support listing custom aliases easily, or maybe it doesn't have custom aliases.
+        // For fallback, we will just return empty or read from a local file if needed.
+        // We can just rely on app-level aliases for nvm-windows if requested.
+        return []
+    }
+}
+
+export async function setAlias(name: string, version: string): Promise<boolean> {
+    const res = await runCommand(['alias', name, version])
+    return res.result.some(line => line.toLowerCase().includes('default') || line.toLowerCase().includes('alias'))
+}
+
+export async function deleteAlias(name: string): Promise<boolean> {
+    const res = await runCommand(['unalias', name])
+    return res.result.some(line => line.toLowerCase().includes('deleted')) || true
+}

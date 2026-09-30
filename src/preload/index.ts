@@ -23,16 +23,29 @@ try {
     useVersion: (version: string) => ipcRenderer.invoke('nvm:useVersion', version),
     migratePackages: (version: string, fromVersion: string, packages?: string[]) => ipcRenderer.invoke('nvm:migratePackages', version, fromVersion, packages),
     getPackagesForVersion: (version: string) => ipcRenderer.invoke('nvm:getPackagesForVersion', version),
+    detectProjectVersion: (dirPath: string) => ipcRenderer.invoke('nvm:detectProjectVersion', dirPath),
+    openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
     cancelInstall: () => ipcRenderer.invoke('nvm:cancelInstall'),
     runNpmCommand: (args: string[]) => ipcRenderer.invoke('nvm:runNpmCommand', args),
+    listAliases: () => ipcRenderer.invoke('nvm:listAliases'),
+    setAlias: (name: string, version: string) => ipcRenderer.invoke('nvm:setAlias', name, version),
+    deleteAlias: (name: string) => ipcRenderer.invoke('nvm:deleteAlias', name),
+    checkOutdatedPackages: () => ipcRenderer.invoke('nvm:checkOutdatedPackages'),
+    cleanNpmCache: () => ipcRenderer.invoke('nvm:cleanNpmCache'),
     runCustomCommand: (command: string) => ipcRenderer.invoke('nvm:runCustomCommand', command),
     getGlobalPackagesSizes: (packages: string[]) => ipcRenderer.invoke('nvm:getGlobalPackagesSizes', packages),
     getNodeSizes: (type: 'installed' | 'download', versions: string[]) => ipcRenderer.invoke('nvm:getNodeSizes', type, versions),
-    onStream: (callback: (data: { msg: string, type: string }) => void) => {
+    onStream: (callback: (data: { msg: string; type: string }) => void) => {
       ipcRenderer.on('nvm:stream', (_event, data) => callback(data))
     },
     removeStreamListener: () => {
       ipcRenderer.removeAllListeners('nvm:stream')
+    },
+    onRefreshRequested: (callback: () => void) => {
+      ipcRenderer.on('nvm:refresh-requested', () => callback())
+    },
+    removeRefreshListener: () => {
+      ipcRenderer.removeAllListeners('nvm:refresh-requested')
     }
   })
 } catch (error) {

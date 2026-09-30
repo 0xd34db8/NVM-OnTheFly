@@ -47,8 +47,9 @@ jobs:
           fi
 
       - name: Build Application and Setup Binary
-        # Runs the command from your package.json which builds the vite app and runs electron-builder
-        run: npm run build:win
+        # Run electron-vite build and then electron-builder with publish set to never
+        # (This prevents electron-builder from failing when it detects a CI environment without a GH_TOKEN)
+        run: npm run build && npx electron-builder --win --config -p never
 
       - name: Create GitHub Release and Upload Binary
         uses: softprops/action-gh-release@v2

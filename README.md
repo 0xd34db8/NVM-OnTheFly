@@ -12,7 +12,7 @@ A GUI for managing Node Version Manager (NVM) environments NATIVELY
 ## Demo
 
 <div align="center">
-  <video src="https://github.com/0xd34db8/NVM-OnTheFly/raw/main/assets/NVM-OTF.mp4" controls="controls" width="100%">
+  <video src="./assets/NVM-OTF.mp4" controls="controls" width="100%">
   </video>
 </div>
 

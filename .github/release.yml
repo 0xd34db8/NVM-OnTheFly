@@ -10,20 +10,20 @@ changelog:
       - "ci:"
       
   categories:
-    - title: "✨ New Features"
+    - title: "New Features"
       commits:
         - "feat:"
         - "feature:"
-    - title: "🐛 Bug Fixes"
+    - title: "Bug Fixes"
       commits:
         - "fix:"
         - "bug:"
-    - title: "🚀 Performance Improvements"
+    - title: "Performance Improvements"
       commits:
         - "perf:"
     - title: "📚 Documentation"
       commits:
         - "docs:"
-    - title: "🛠️ Other Changes"
+    - title: "Other Changes"
       commits:
         - "*" # Catch-all for any other commits

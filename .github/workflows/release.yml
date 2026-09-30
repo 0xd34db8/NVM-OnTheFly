@@ -27,19 +27,24 @@ jobs:
         run: npm ci
 
       - name: Update package.json Version and Push
+        shell: bash
         run: |
           # Strip 'v' from the tag (e.g., 'v2.0.2' -> '2.0.2')
-          $version = $env:GITHUB_REF_NAME -replace '^v',''
+          VERSION=${GITHUB_REF_NAME#v}
           
           # Update package.json and package-lock.json
-          npm version $version --no-git-tag-version
+          npm version $VERSION --no-git-tag-version --allow-same-version
           
-          # Commit and push the updated files back to the main branch
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to $env:GITHUB_REF_NAME [skip ci]"
-          git push origin HEAD:main
+          # Commit and push the updated files back to the main branch if they changed
+          if [[ -n $(git status --porcelain) ]]; then
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add package.json package-lock.json
+            git commit -m "chore: bump version to $GITHUB_REF_NAME [skip ci]"
+            git push origin HEAD:main
+          else
+            echo "Version is already up to date, skipping commit."
+          fi
 
       - name: Build Application and Setup Binary
         # Runs the command from your package.json which builds the vite app and runs electron-builder

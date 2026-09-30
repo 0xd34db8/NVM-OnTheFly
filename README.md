@@ -1,9 +1,20 @@
+<div align="center">
+  <img src="assets/LOGO.png" alt="NVM-OTF Logo" width="200" />
+</div>
+
 # NVM: OnTheFly!
 
 A GUI for managing Node Version Manager (NVM) environments NATIVELY
 
 > [!IMPORTANT]
 > This application does **not** act like a regular standalone manager that creates its own isolated folders, symlinks, or custom configuration files. Instead, it acts as a direct GUI wrapper that **hooks natively into your existing `nvm-sh` and `nvm-windows` installations**. Any change you make in the GUI is exactly what would happen if you typed it in the terminal, meaning zero lock-in and 100% compatibility with your current setup!
+
+## Demo
+
+<div align="center">
+  <video src="https://github.com/0xd34db8/NVM-OnTheFly/raw/main/assets/NVM-OTF.mp4" controls="controls" width="100%">
+  </video>
+</div>
 
 ## Screenshots
 

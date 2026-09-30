@@ -1,0 +1,29 @@
+changelog:
+  exclude:
+    # Exclude commits from these authors
+    authors:
+      - github-actions[bot]
+      - dependabot[bot]
+    # Optionally exclude commits that match these prefixes
+    commits:
+      - "chore:"
+      - "ci:"
+      
+  categories:
+    - title: "✨ New Features"
+      commits:
+        - "feat:"
+        - "feature:"
+    - title: "🐛 Bug Fixes"
+      commits:
+        - "fix:"
+        - "bug:"
+    - title: "🚀 Performance Improvements"
+      commits:
+        - "perf:"
+    - title: "📚 Documentation"
+      commits:
+        - "docs:"
+    - title: "🛠️ Other Changes"
+      commits:
+        - "*" # Catch-all for any other commits

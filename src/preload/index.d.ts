@@ -24,6 +24,7 @@ declare global {
       getPackagesForVersion: (version: string) => Promise<string[]>
       cancelInstall: () => Promise<void>
       runNpmCommand: (args: string[]) => Promise<{ result: string; error: string; code: number | null }>
+      runCustomCommand: (command: string) => Promise<{ result: string; error: string; code: number | null }>
       getGlobalPackagesSizes: (packages: string[]) => Promise<Record<string, number>>
       getNodeSizes: (type: 'installed' | 'download', versions: string[]) => Promise<Record<string, number>>
       onStream: (callback: (data: { msg: string; type: string }) => void) => void

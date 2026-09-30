@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNvmStore } from '../store/nvmStore'
-import { Package, RefreshCw, Trash2, Terminal, X } from 'lucide-react'
+import { Package, RefreshCw, Trash2, Terminal, X, Loader2 } from 'lucide-react'
 import Preloader from '../components/Preloader'
 import TerminalConsole from './TerminalConsole'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -30,6 +30,7 @@ export default function GlobalPackages() {
 
   const [uninstallingPackage, setUninstallingPackage] = useState<string | null>(null)
 
+  const isSizesLoading = packages.length > 0 && packages.some(p => p.sizeBytes === undefined)
   const totalSize = packages.reduce((acc, pkg) => acc + (pkg.sizeBytes || 0), 0)
 
   const handleUninstall = (pkgName: string) => {
@@ -62,9 +63,13 @@ export default function GlobalPackages() {
         <h2 className="font-semibold flex items-center gap-2">
           <Package className="w-5 h-5 text-primary" />
           Installed Global Packages
-          {packages.length > 0 && totalSize > 0 && (
-            <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20">
-              {formatBytes(totalSize)} Total
+          {packages.length > 0 && (
+            <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20 flex items-center gap-1.5">
+              {isSizesLoading ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> Calculating...</>
+              ) : (
+                `${formatBytes(totalSize)} Total`
+              )}
             </span>
           )}
         </h2>
@@ -110,13 +115,13 @@ export default function GlobalPackages() {
                     </div>
                     <div className="truncate">
                       <h3 className="font-medium text-sm truncate">{pkg.name}</h3>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground flex items-center h-4">
                         v{pkg.version}
-                        {pkg.sizeBytes !== undefined && (
-                          <>
-                            <span className="mx-1.5 opacity-50">•</span>
-                            {formatBytes(pkg.sizeBytes)}
-                          </>
+                        <span className="mx-1.5 opacity-50">•</span>
+                        {pkg.sizeBytes !== undefined ? (
+                          formatBytes(pkg.sizeBytes)
+                        ) : (
+                          <Loader2 className="w-3 h-3 animate-spin opacity-50" />
                         )}
                       </p>
                     </div>

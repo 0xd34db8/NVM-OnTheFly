@@ -25,6 +25,7 @@ try {
     getPackagesForVersion: (version: string) => ipcRenderer.invoke('nvm:getPackagesForVersion', version),
     cancelInstall: () => ipcRenderer.invoke('nvm:cancelInstall'),
     runNpmCommand: (args: string[]) => ipcRenderer.invoke('nvm:runNpmCommand', args),
+    runCustomCommand: (command: string) => ipcRenderer.invoke('nvm:runCustomCommand', command),
     getGlobalPackagesSizes: (packages: string[]) => ipcRenderer.invoke('nvm:getGlobalPackagesSizes', packages),
     getNodeSizes: (type: 'installed' | 'download', versions: string[]) => ipcRenderer.invoke('nvm:getNodeSizes', type, versions),
     onStream: (callback: (data: { msg: string, type: string }) => void) => {

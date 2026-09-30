@@ -6,6 +6,25 @@ export default function TerminalConsole() {
   const { logs } = useNvmStore()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
+  const [command, setCommand] = useState('')
+  const [isExecuting, setIsExecuting] = useState(false)
+
+  const handleExecute = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!command.trim() || isExecuting) return
+    
+    setIsExecuting(true)
+    const cmdToRun = command
+    setCommand('')
+    
+    try {
+      await window.nvmAPI.runCustomCommand(cmdToRun)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsExecuting(false)
+    }
+  }
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -56,6 +75,22 @@ export default function TerminalConsole() {
             </div>
           ))
         )}
+      </div>
+
+      <div className="border-t border-white/10 bg-white/5 p-2">
+        <form onSubmit={handleExecute} className="flex items-center gap-2 text-white/70">
+          <span className="text-primary font-bold pl-2">{'>'}</span>
+          <input
+            type="text"
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            disabled={isExecuting}
+            placeholder={isExecuting ? "Executing..." : "Enter command..."}
+            className="flex-1 bg-transparent border-none outline-none text-[13px] font-mono text-white/90 placeholder:text-white/30 disabled:opacity-50"
+            autoComplete="off"
+            spellCheck="false"
+          />
+        </form>
       </div>
     </div>
   )

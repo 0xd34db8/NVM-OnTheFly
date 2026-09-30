@@ -14,3 +14,16 @@ When implementing actions that modify state (e.g.: installing, uninstalling a no
 These functions execute heavy, blocking commands like `nvm ls` or `npm ls -g` which cause the UI to freeze and output redundant text to the terminal console.
 
 Instead, rely on the stream output sent by the backend. Use `nvmStore.ts` to parse the stream logs (e.g., `Uninstalled node...`, `Now using node...`) and instantly mutate the local Zustand store. This guarantees lightning-fast, optimistic UI updates without extra terminal clutter.
+
+# Commit Message Syntax
+
+**Standard Format:**
+When generating commit messages for this repository, ALWAYS use the following plain-text format. Do NOT use markdown. Start with a lowercase commit type (e.g. `feat:`, `fix:`, `chore:`), followed by a brief description. Then, on the next lines, provide a bulleted list of specific changes using an indent and single hyphens (`- `).
+
+Example:
+```text
+feat: improve package management and download UX
+- Optimistic UI on Global Pkgs uninstall
+- Display size of each package in global packages & the total size of all pacakges
+- Show npm version sizes on the Version Manager page & Download page
+```

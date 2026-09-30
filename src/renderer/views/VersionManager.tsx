@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNvmStore } from '../store/nvmStore'
-import { Download, Trash2, Play, RefreshCw, Search, Terminal, X, ChevronRight, ChevronDown } from 'lucide-react'
+import { Download, Trash2, Play, RefreshCw, Search, Terminal, X, ChevronRight, ChevronDown, Loader2 } from 'lucide-react'
 import Preloader from '../components/Preloader'
 import TerminalConsole from './TerminalConsole'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -269,7 +269,7 @@ export default function VersionManager() {
                       {node.version}
                     </span>
                     {nodeSizes[node.version] !== undefined && (
-                      <span className="text-xs text-muted-foreground ml-2">
+                      <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
                         {formatBytes(nodeSizes[node.version])}
                       </span>
                     )}

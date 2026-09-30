@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Minus, Square, X, Home, Settings, Package, Terminal as TerminalIcon } from 'lucide-react'
+import { Minus, Square, X, Home, Settings, Package, Terminal as TerminalIcon, Loader2 } from 'lucide-react'
 import VersionManager from './views/VersionManager'
 import GlobalPackages from './views/GlobalPackages'
 import TerminalConsole from './views/TerminalConsole'
@@ -64,7 +64,12 @@ function App() {
               <span className="text-[10px] uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">
                 {currentMode}
               </span>
-            ) : null}
+            ) : (
+              <span className="text-[10px] uppercase tracking-wider bg-muted text-muted-foreground border border-border px-2 py-0.5 rounded-full font-bold flex items-center gap-1.5">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Detecting Engine...
+              </span>
+            )}
           </div>
         </div>
         <div className="flex h-full" style={{ WebkitAppRegion: 'no-drag' } as any}>

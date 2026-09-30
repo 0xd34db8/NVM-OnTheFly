@@ -143,6 +143,45 @@ app.whenReady().then(() => {
     return runNpmCommand(args, onStream)
   })
 
+  ipcMain.handle('nvm:runCustomCommand', (event, command: string) => {
+    return new Promise((resolve) => {
+      const { spawn } = require('child_process')
+      
+      let cmd;
+      if (getMode() === 'nvm-sh') {
+        const bashCmd = `source ~/.bash_profile 2>/dev/null || true; source ~/.bashrc 2>/dev/null || true; source ~/.nvm/nvm.sh 2>/dev/null || true; ${command}`
+        cmd = spawn('bash', ['-c', bashCmd], { shell: false })
+      } else {
+        cmd = spawn(command, { shell: true })
+      }
+      
+      let stdoutData = ''
+      let stderrData = ''
+      
+      const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
+      
+      onStream(`> ${command}\n`, 'system')
+
+      cmd.stdout.on('data', (d: any) => {
+        const msg = String(d)
+        stdoutData += msg
+        onStream(msg, 'info')
+      })
+      cmd.stderr.on('data', (d: any) => {
+        const msg = String(d)
+        stderrData += msg
+        onStream(msg, 'error')
+      })
+      cmd.on('error', (err: any) => {
+        onStream(`Command failed: ${err.message}\n`, 'error')
+        resolve({ result: '', error: err.message, code: 1 })
+      })
+      cmd.on('exit', (code: number | null) => {
+        resolve({ result: stdoutData, error: stderrData, code })
+      })
+    })
+  })
+
   ipcMain.handle('nvm:cancelInstall', () => {
     cancelInstallProcess()
   })

@@ -19,11 +19,12 @@ A GUI for managing Node Version Manager (NVM) environments NATIVELY
 - **Cancelable Operations**: Safely abort ongoing Node.js installations at any time with a dedicated cancel action.
 - **Set Active Version**: Easily switch your system's default Node.js version by clicking the "Use" button.
 - **Smart Search**: Quickly find specific Node versions out of hundreds of releases using the built-in search filter.
-- **Storage Insights**: Automatically calculates and displays the disk space occupied by your installed Node versions and the file sizes of remote versions.
-- **Global Package Migration**: When installing a new Node version, the GUI provides a prompt allowing you to seamlessly migrate your globally installed NPM packages from an older installed version (using NVM's `--reinstall-packages-from=` flag).
+- **Storage Insights**: Automatically calculates and displays the disk space occupied by your installed Node versions and the file sizes of remote versions, as well as the individual and combined sizes of all your global NPM packages.
+- **Lightning Fast Optimistic UI**: Uses intelligent command stream parsing to instantly update the local state during installs or uninstalls, entirely bypassing slow redundant shell polling to keep the application buttery smooth.
+- **Global Package Migration**: When installing a new Node version, the GUI allows you to seamlessly migrate globally installed NPM packages from an older installed version. You can either migrate all packages at once, or selectively choose specific packages to migrate.
 - **Global Package Manager**: Instantly list all global packages installed on the current default Node version, and easily uninstall unwanted packages with one click.
 - **Dual NVM Engine Support**: Automatically detects `nvm-windows` installations, with a fallback to `nvm-sh` (via Git Bash). The UI allows you to hot-swap between these CLI interfaces if both are installed.
-- **Real-time Terminal Logs**: Features a drop-down terminal console that streams `stdout` and `stderr` directly from background commands (like package listing or downloading Node versions).
+- **Interactive Terminal Console**: Features a drop-down terminal console that not only streams real-time `stdout` and `stderr` from background tasks, but also allows you to manually type and execute arbitrary system or `nvm` commands seamlessly across different engine modes.
 - **Adaptive Theming**: Fully responsive Dark and Light modes that can be manually toggled via the settings drawer, dynamically styling the app and logos.
 
 ---

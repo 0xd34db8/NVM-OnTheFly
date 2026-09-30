@@ -1,3 +1,5 @@
+
+
 <div align="center">
   <img src="assets/LOGO.png" alt="NVM-OTF Logo" width="200" />
 </div>
@@ -11,10 +13,7 @@ A GUI for managing Node Version Manager (NVM) environments NATIVELY
 
 ## Demo
 
-<div align="center">
-  <video src="./assets/NVM-OTF.mp4" controls="controls" width="100%">
-  </video>
-</div>
+https://github.com/0xd34db8/NVM-OnTheFly/raw/main/assets/NVM-OTF.mp4
 
 ## Screenshots
 

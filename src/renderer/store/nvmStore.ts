@@ -203,9 +203,35 @@ if (typeof window !== 'undefined' && window.nvmAPI) {
         if (match) {
           const version = match[0].startsWith('v') ? match[0] : `v${match[0]}`
           currentInstalled.forEach(v => v.isActive = v.version === version)
+          if (!currentInstalled.some(v => v.version === version)) {
+            currentInstalled.push({ version, isActive: true })
+          }
           foundNewVersion = true
         }
       } 
+      // Uninstalled nodes detection
+      else if (trimmedLine.toLowerCase().startsWith('uninstalled node') || trimmedLine.toLowerCase().startsWith('uninstalling node v')) {
+        const match = trimmedLine.match(/v?\d+\.\d+\.\d+/)
+        if (match) {
+          const version = match[0].startsWith('v') ? match[0] : `v${match[0]}`
+          const index = currentInstalled.findIndex(v => v.version === version)
+          if (index !== -1) {
+            currentInstalled.splice(index, 1)
+            foundNewVersion = true
+          }
+        }
+      } 
+      // Windows installed nodes detection
+      else if (trimmedLine.toLowerCase().startsWith('downloading node.js version')) {
+        const match = trimmedLine.match(/\d+\.\d+\.\d+/)
+        if (match) {
+          const version = `v${match[0]}`
+          if (!currentInstalled.some(v => v.version === version)) {
+            currentInstalled.push({ version, isActive: false })
+            foundNewVersion = true
+          }
+        }
+      }
       // Installed nodes detection
       else if (trimmedLine.startsWith('->') || trimmedLine.startsWith('*') || /^\s*v?\d+\.\d+\.\d+/.test(line)) {
         const match = trimmedLine.match(/\d+\.\d+\.\d+/)

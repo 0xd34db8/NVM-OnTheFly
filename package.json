@@ -1,6 +1,7 @@
 {
   "name": "nvm-onthefly",
-  "version": "1.0.0",
+  "version": "2.0.2",
+  "author": "Apurv Gupta <https://github.com/0xd34db8/>",
   "main": "./out/main/index.js",
   "type": "module",
   "scripts": {

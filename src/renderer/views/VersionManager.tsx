@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNvmStore } from '../store/nvmStore'
-import { Download, Trash2, Play, RefreshCw, Search, Terminal, X } from 'lucide-react'
+import { Download, Trash2, Play, RefreshCw, Search, Terminal, X, ChevronRight, ChevronDown } from 'lucide-react'
 import Preloader from '../components/Preloader'
 import TerminalConsole from './TerminalConsole'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -30,8 +30,26 @@ export default function VersionManager() {
     setDownloadPage(1)
   }, [search, tab])
 
-
-
+  // Clear loading action instantly when the stream parser updates installedData
+  useEffect(() => {
+    if (loadingAction?.startsWith('install-')) {
+      const version = loadingAction.replace('install-', '')
+      if (installedData.some(i => i.version === version)) {
+        setLoadingAction(null)
+      }
+    } else if (loadingAction?.startsWith('uninstall-')) {
+      const version = loadingAction.replace('uninstall-', '')
+      if (!installedData.some(i => i.version === version)) {
+        setLoadingAction(null)
+      }
+    } else if (loadingAction?.startsWith('use-')) {
+      const version = loadingAction.replace('use-', '')
+      const active = installedData.find(i => i.isActive)
+      if (active?.version === version) {
+        setLoadingAction(null)
+      }
+    }
+  }, [installedData, loadingAction])
   const handleUse = async (version: string) => {
     setLoadingAction(`use-${version}`)
     try {
@@ -51,6 +69,35 @@ export default function VersionManager() {
 
   const [migratingVersion, setMigratingVersion] = useState<string | null>(null)
   const [migrationSource, setMigrationSource] = useState<string>('none')
+  
+  const [expandedMigrationNode, setExpandedMigrationNode] = useState<string | null>(null)
+  const [migrationPackages, setMigrationPackages] = useState<Record<string, string[]>>({})
+  const [selectedMigrationPackages, setSelectedMigrationPackages] = useState<Record<string, Set<string>>>({})
+
+  const handleExpandMigrationNode = async (e: React.MouseEvent, version: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (expandedMigrationNode === version) {
+      setExpandedMigrationNode(null)
+      return
+    }
+    setExpandedMigrationNode(version)
+    if (!migrationPackages[version]) {
+      const pkgs = await window.nvmAPI.getPackagesForVersion(version)
+      setMigrationPackages(prev => ({ ...prev, [version]: pkgs }))
+      setSelectedMigrationPackages(prev => ({ ...prev, [version]: new Set(pkgs) }))
+    }
+  }
+
+  const togglePackageSelection = (version: string, pkg: string) => {
+    setSelectedMigrationPackages(prev => {
+      const newSet = new Set(prev[version])
+      if (newSet.has(pkg)) newSet.delete(pkg)
+      else newSet.add(pkg)
+      return { ...prev, [version]: newSet }
+    })
+  }
 
   const handleInstall = async (version: string) => {
     if (installedData.length > 0) {
@@ -73,10 +120,24 @@ export default function VersionManager() {
       if (source === 'none') {
         success = await window.nvmAPI.installVersion(version)
       } else {
-        success = await window.nvmAPI.migratePackages(version, source)
+        const availablePkgs = migrationPackages[source]
+        const selectedPkgs = selectedMigrationPackages[source]
+        
+        if (availablePkgs && selectedPkgs) {
+            if (selectedPkgs.size === 0) {
+                success = await window.nvmAPI.installVersion(version)
+            } else if (selectedPkgs.size < availablePkgs.length) {
+                const pkgsToPass = Array.from(selectedPkgs)
+                success = await window.nvmAPI.migratePackages(version, source, pkgsToPass)
+            } else {
+                success = await window.nvmAPI.migratePackages(version, source)
+            }
+        } else {
+            success = await window.nvmAPI.migratePackages(version, source)
+        }
       }
       if (!success) throw new Error('NVM command exited with an error.')
-      await fetchState()
+      // No need to run fetchState() as stream parser updates state instantly
     } catch (e: any) {
       addLog({ msg: `Failed to install version ${version}: ${e.message}`, type: 'error' })
       setIsTerminalOpen(true)
@@ -99,7 +160,7 @@ export default function VersionManager() {
     try {
       const success = await window.nvmAPI.uninstallVersion(version)
       if (!success) throw new Error('NVM command exited with an error.')
-      await fetchState()
+      // No need to run fetchState() as stream parser updates state instantly
     } catch (e: any) {
       addLog({ msg: `Failed to uninstall version ${version}: ${e.message}`, type: 'error' })
       setIsTerminalOpen(true)
@@ -397,17 +458,68 @@ export default function VersionManager() {
                 <span className="text-sm font-medium">None (Clean install)</span>
               </label>
               {installedData.map(node => (
-                <label key={node.version} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors">
-                  <input
-                    type="radio"
-                    name="migration"
-                    value={node.version}
-                    checked={migrationSource === node.version}
-                    onChange={(e) => setMigrationSource(e.target.value)}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm font-medium">Migrate from {node.version}</span>
-                </label>
+                <div key={node.version} className="flex flex-col border border-border rounded-lg overflow-hidden transition-colors">
+                  <div 
+                    className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer"
+                    onClick={() => {
+                      if (migrationSource !== node.version) setMigrationSource(node.version)
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="migration"
+                      value={node.version}
+                      checked={migrationSource === node.version}
+                      onChange={(e) => setMigrationSource(e.target.value)}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm font-medium flex-1">Migrate from {node.version}</span>
+                    <button 
+                      onClick={(e) => handleExpandMigrationNode(e, node.version)}
+                      className="p-1 hover:bg-secondary rounded transition-colors"
+                    >
+                      {expandedMigrationNode === node.version ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {expandedMigrationNode === node.version && (
+                    <div className="bg-muted/30 border-t border-border p-3 max-h-[150px] overflow-y-auto">
+                      {!migrationPackages[node.version] ? (
+                        <div className="flex justify-center p-2"><Preloader /></div>
+                      ) : migrationPackages[node.version].length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-2">No global packages found.</p>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-2 mb-1 pb-2 border-b border-border/50">
+                            <input 
+                              type="checkbox"
+                              className="accent-primary rounded"
+                              checked={selectedMigrationPackages[node.version]?.size === migrationPackages[node.version].length}
+                              onChange={(e) => {
+                                const checked = e.target.checked
+                                setSelectedMigrationPackages(prev => ({
+                                  ...prev,
+                                  [node.version]: checked ? new Set(migrationPackages[node.version]) : new Set()
+                                }))
+                              }}
+                            />
+                            <span className="text-xs font-semibold">Select All</span>
+                          </label>
+                          {migrationPackages[node.version].map(pkg => (
+                            <label key={pkg} className="flex items-center gap-2 cursor-pointer group">
+                              <input 
+                                type="checkbox"
+                                className="accent-primary rounded"
+                                checked={selectedMigrationPackages[node.version]?.has(pkg) || false}
+                                onChange={() => togglePackageSelection(node.version, pkg)}
+                              />
+                              <span className="text-xs group-hover:text-primary transition-colors">{pkg}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
             <div className="flex justify-end gap-3">

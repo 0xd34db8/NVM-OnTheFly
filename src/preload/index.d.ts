@@ -20,7 +20,8 @@ declare global {
       installVersion: (version: string) => Promise<boolean>
       uninstallVersion: (version: string) => Promise<boolean>
       useVersion: (version: string) => Promise<boolean>
-      migratePackages: (version: string, fromVersion: string) => Promise<boolean>
+      migratePackages: (version: string, fromVersion: string, packages?: string[]) => Promise<boolean>
+      getPackagesForVersion: (version: string) => Promise<string[]>
       cancelInstall: () => Promise<void>
       runNpmCommand: (args: string[]) => Promise<{ result: string; error: string; code: number | null }>
       getGlobalPackagesSizes: (packages: string[]) => Promise<Record<string, number>>

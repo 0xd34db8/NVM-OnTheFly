@@ -60,6 +60,7 @@ import {
   uninstallVersion,
   useVersion,
   migratePackages,
+  getPackagesForVersion,
   runNpmCommand,
   cancelInstallProcess
 } from './nvm'
@@ -128,9 +129,13 @@ app.whenReady().then(() => {
     return useVersion(version, onStream)
   })
   
-  ipcMain.handle('nvm:migratePackages', (event, version: string, fromVersion: string) => {
+  ipcMain.handle('nvm:migratePackages', (event, version: string, fromVersion: string, packages?: string[]) => {
     const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
-    return migratePackages(version, fromVersion, onStream)
+    return migratePackages(version, fromVersion, packages, onStream)
+  })
+  
+  ipcMain.handle('nvm:getPackagesForVersion', (event, version: string) => {
+    return getPackagesForVersion(version)
   })
   
   ipcMain.handle('nvm:runNpmCommand', (event, args: string[]) => {

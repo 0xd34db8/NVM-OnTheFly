@@ -114,6 +114,8 @@ export function runCommand(args: string[], onStream?: (msg: string, type: string
                     let fallbackArgs = [...safeArgs]
                     if (fallbackArgs[0] === 'use') {
                         fallbackArgs = ['alias', 'default', fallbackArgs[1]]
+                    } else if (fallbackArgs[0] === 'ls' && !fallbackArgs.includes('--no-alias')) {
+                        fallbackArgs.push('--no-alias')
                     }
 
                     let bashCmd = `source ~/.bash_profile 2>/dev/null || true; source ~/.bashrc 2>/dev/null || true; source ~/.nvm/nvm.sh 2>/dev/null || true; nvm use default >/dev/null 2>&1; nvm ${fallbackArgs.join(' ')}`
@@ -204,7 +206,8 @@ export interface InstalledNode {
 }
 
 export async function getInstalledData(onStream?: (msg: string, type: string) => void): Promise<{ nodes: InstalledNode[], mode: Mode }> {
-    const res = await runCommand(['ls'], onStream)
+    const args = currentMode === 'nvm-sh' ? ['ls', '--no-alias'] : ['ls']
+    const res = await runCommand(args, onStream)
     
     if (res.os === 'darwin') {
          return { nodes: [], mode: res.mode }
@@ -278,6 +281,37 @@ export async function getDownloadData(): Promise<any[]> {
     }
 }
 
+export async function getPackagesForVersion(version: string): Promise<string[]> {
+    try {
+        let packagesPath = ''
+        if (currentMode === 'nvm-windows') {
+            const appDataNvm = process.env.APPDATA ? join(process.env.APPDATA, 'nvm') : ''
+            if (appDataNvm) {
+                packagesPath = join(appDataNvm, version, 'node_modules')
+            }
+        } else {
+            // nvm-sh
+            const home = process.env.HOME || process.env.USERPROFILE || ''
+            if (process.platform === 'win32') {
+                packagesPath = join(home, '.nvm', 'versions', 'node', version, 'bin', 'node_modules')
+            } else {
+                packagesPath = join(home, '.nvm', 'versions', 'node', version, 'lib', 'node_modules')
+            }
+        }
+        
+        if (packagesPath) {
+            const fs = require('node:fs')
+            if (fs.existsSync(packagesPath)) {
+                const dirs = fs.readdirSync(packagesPath, { withFileTypes: true })
+                return dirs
+                    .filter((dirent: any) => dirent.isDirectory() && dirent.name !== 'npm' && dirent.name !== 'corepack')
+                    .map((dirent: any) => dirent.name)
+            }
+        }
+    } catch (_e) {}
+    return []
+}
+
 export async function installVersion(version: string, onStream?: (msg: string, type: string) => void): Promise<boolean> {
     const res = await runCommand(['install', version], onStream)
     return res.mode !== 'Error'
@@ -293,9 +327,40 @@ export async function useVersion(version: string, onStream?: (msg: string, type:
     return res.mode !== 'Error'
 }
 
-export async function migratePackages(version: string, fromVersion: string, onStream?: (msg: string, type: string) => void): Promise<boolean> {
-    const res = await runCommand(['install', version, `--reinstall-packages-from=${fromVersion}`], onStream)
-    return res.mode !== 'Error'
+export async function migratePackages(version: string, fromVersion: string, packages?: string[], onStream?: (msg: string, type: string) => void): Promise<boolean> {
+    if (!packages || packages.length === 0) {
+        const res = await runCommand(['install', version, `--reinstall-packages-from=${fromVersion}`], onStream)
+        return res.mode !== 'Error'
+    } else {
+        // partial migration
+        const installRes = await runCommand(['install', version], onStream)
+        if (installRes.mode === 'Error') return false
+        
+        if (currentMode === 'nvm-windows') {
+            const appDataNvm = process.env.APPDATA ? join(process.env.APPDATA, 'nvm') : ''
+            const npmPath = join(appDataNvm, version, 'npm.cmd')
+            const fs = require('node:fs')
+            if (fs.existsSync(npmPath)) {
+                if (onStream) onStream(`\n> npm install -g ${packages.join(' ')}\n`, 'system')
+                await new Promise<void>(resolve => {
+                    const cmd = spawn(`"${npmPath}"`, ['install', '-g', ...packages], { shell: true })
+                    cmd.stdout.on('data', d => { if (onStream) onStream(String(d), 'info') })
+                    cmd.stderr.on('data', d => { if (onStream) onStream(String(d), 'error') })
+                    cmd.on('exit', () => resolve())
+                })
+            }
+        } else {
+            const bashCmd = `source ~/.bash_profile 2>/dev/null || true; source ~/.bashrc 2>/dev/null || true; source ~/.nvm/nvm.sh 2>/dev/null || true; nvm use ${version}; npm install -g ${packages.join(' ')}`
+            if (onStream) onStream(`\n> npm install -g ${packages.join(' ')}\n`, 'system')
+            await new Promise<void>(resolve => {
+                const cmd = spawn('bash', ['-c', bashCmd], { shell: false })
+                cmd.stdout.on('data', d => { if (onStream) onStream(String(d), 'info') })
+                cmd.stderr.on('data', d => { if (onStream) onStream(String(d), 'error') })
+                cmd.on('exit', () => resolve())
+            })
+        }
+        return true
+    }
 }
 
 export function runNpmCommand(args: string[], onStream?: (msg: string, type: string) => void): Promise<{ result: string, error: string, code: number | null }> {

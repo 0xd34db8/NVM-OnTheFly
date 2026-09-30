@@ -5,6 +5,15 @@ import Preloader from '../components/Preloader'
 import TerminalConsole from './TerminalConsole'
 import ConfirmDialog from '../components/ConfirmDialog'
 
+function formatBytes(bytes: number, decimals = 2) {
+  if (!+bytes) return '0 Bytes'
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+}
+
 export default function GlobalPackages() {
   const { isFetching, isFetchingPackages, hasFetchedPackages, globalPackages: packages, fetchPackages, showTerminalOnPackages, addLog } = useNvmStore()
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
@@ -21,6 +30,8 @@ export default function GlobalPackages() {
 
   const [uninstallingPackage, setUninstallingPackage] = useState<string | null>(null)
 
+  const totalSize = packages.reduce((acc, pkg) => acc + (pkg.sizeBytes || 0), 0)
+
   const handleUninstall = (pkgName: string) => {
     setUninstallingPackage(pkgName)
   }
@@ -33,7 +44,10 @@ export default function GlobalPackages() {
     try {
       const res = await window.nvmAPI.runNpmCommand(['uninstall', '-g', pkgName])
       if (res.code !== 0) throw new Error(res.error || 'NPM command failed.')
-      await fetchPackages()
+      // Update UI instantly instead of waiting for a full `npm ls -g` (fetchPackages)
+      useNvmStore.setState(state => ({
+        globalPackages: state.globalPackages.filter(p => p.name !== pkgName)
+      }))
     } catch (e: any) {
       addLog({ msg: `Failed to uninstall package ${pkgName}: ${e.message}`, type: 'error' })
       setIsTerminalOpen(true)
@@ -48,6 +62,11 @@ export default function GlobalPackages() {
         <h2 className="font-semibold flex items-center gap-2">
           <Package className="w-5 h-5 text-primary" />
           Installed Global Packages
+          {packages.length > 0 && totalSize > 0 && (
+            <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20">
+              {formatBytes(totalSize)} Total
+            </span>
+          )}
         </h2>
         <button
           onClick={fetchPackages}
@@ -91,7 +110,15 @@ export default function GlobalPackages() {
                     </div>
                     <div className="truncate">
                       <h3 className="font-medium text-sm truncate">{pkg.name}</h3>
-                      <p className="text-xs text-muted-foreground">v{pkg.version}</p>
+                      <p className="text-xs text-muted-foreground">
+                        v{pkg.version}
+                        {pkg.sizeBytes !== undefined && (
+                          <>
+                            <span className="mx-1.5 opacity-50">•</span>
+                            {formatBytes(pkg.sizeBytes)}
+                          </>
+                        )}
+                      </p>
                     </div>
                   </div>
                   <button

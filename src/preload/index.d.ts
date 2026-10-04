@@ -17,6 +17,7 @@ declare global {
       setMode: (mode: Mode) => void
       getInstalledData: () => Promise<InstalledNode[]>
       getDownloadData: () => Promise<any[]>
+      installEngine: (engine: string) => Promise<boolean>
       installVersion: (version: string) => Promise<boolean>
       uninstallVersion: (version: string) => Promise<boolean>
       useVersion: (version: string) => Promise<boolean>

@@ -5,6 +5,7 @@ import GlobalPackages from './views/GlobalPackages'
 import TerminalConsole from './views/TerminalConsole'
 import SettingsView from './views/Settings'
 import AliasManager from './views/AliasManager'
+import EngineSetup from './views/EngineSetup'
 import { useNvmStore } from './store/nvmStore'
 
 import logoIco from './assets/img/logo-32x32.ico'
@@ -151,11 +152,17 @@ function App() {
 
         {/* Content */}
         <main className="flex-1 overflow-hidden bg-background p-6">
-          {activeTab === 'versions' && <VersionManager />}
-          {activeTab === 'packages' && <GlobalPackages />}
-          {activeTab === 'aliases' && <AliasManager />}
-          {activeTab === 'console' && <TerminalConsole />}
-          {activeTab === 'settings' && <SettingsView />}
+          {currentMode === 'Error' ? (
+            <EngineSetup />
+          ) : (
+            <>
+              {activeTab === 'versions' && <VersionManager />}
+              {activeTab === 'packages' && <GlobalPackages />}
+              {activeTab === 'aliases' && <AliasManager />}
+              {activeTab === 'console' && <TerminalConsole />}
+              {activeTab === 'settings' && <SettingsView />}
+            </>
+          )}
         </main>
       </div>
     </div>

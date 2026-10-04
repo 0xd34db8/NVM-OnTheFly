@@ -317,6 +317,39 @@ export async function installVersion(version: string, onStream?: (msg: string, t
     return res.mode !== 'Error'
 }
 
+export async function installEngine(engine: string, onStream?: (msg: string, type: string) => void): Promise<boolean> {
+    return new Promise((resolve) => {
+        if (engine === 'nvm-windows') {
+            if (onStream) onStream('Downloading nvm-windows setup...\n', 'info')
+            // Using PowerShell to download and run the setup
+            const psCmd = `Invoke-WebRequest -Uri "https://github.com/coreybutler/nvm-windows/releases/download/1.1.12/nvm-setup.exe" -OutFile "$env:TEMP\\nvm-setup.exe"; Start-Process -FilePath "$env:TEMP\\nvm-setup.exe" -Wait`
+            const cmd = spawn('powershell.exe', ['-Command', psCmd], { shell: false })
+            cmd.stdout.on('data', d => { if (onStream) onStream(String(d), 'info') })
+            cmd.stderr.on('data', d => { if (onStream) onStream(String(d), 'error') })
+            cmd.on('exit', (code) => {
+                resolve(code === 0)
+            })
+        } else if (engine === 'nvm-sh') {
+            if (onStream) onStream('Downloading and installing nvm-sh...\n', 'info')
+            const bashCmd = 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
+            // For Windows we might need to run this in Git Bash if available
+            const execCmd = process.platform === 'win32' ? 'bash' : 'bash' 
+            const cmd = spawn(execCmd, ['-c', bashCmd], { shell: false })
+            cmd.stdout.on('data', d => { if (onStream) onStream(String(d), 'info') })
+            cmd.stderr.on('data', d => { if (onStream) onStream(String(d), 'error') })
+            cmd.on('exit', (code) => {
+                resolve(code === 0)
+            })
+            cmd.on('error', (err) => {
+                if (onStream) onStream(`Failed to start bash: ${err.message}\n`, 'error')
+                resolve(false)
+            })
+        } else {
+            resolve(false)
+        }
+    })
+}
+
 export async function uninstallVersion(version: string, onStream?: (msg: string, type: string) => void): Promise<boolean> {
     const res = await runCommand(['uninstall', version], onStream)
     return res.mode !== 'Error'

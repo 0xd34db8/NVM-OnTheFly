@@ -18,6 +18,7 @@ try {
     setMode: (mode: string) => ipcRenderer.send('nvm:setMode', mode),
     getInstalledData: () => ipcRenderer.invoke('nvm:getInstalledData'),
     getDownloadData: () => ipcRenderer.invoke('nvm:getDownloadData'),
+    installEngine: (engine: string) => ipcRenderer.invoke('nvm:installEngine', engine),
     installVersion: (version: string) => ipcRenderer.invoke('nvm:installVersion', version),
     uninstallVersion: (version: string) => ipcRenderer.invoke('nvm:uninstallVersion', version),
     useVersion: (version: string) => ipcRenderer.invoke('nvm:useVersion', version),

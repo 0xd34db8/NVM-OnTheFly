@@ -88,6 +88,7 @@ import {
   setMode,
   getInstalledData,
   getDownloadData,
+  installEngine,
   installVersion,
   uninstallVersion,
   useVersion,
@@ -236,6 +237,13 @@ app.whenReady().then(() => {
     dependencies.sort((a, b) => a.name.localeCompare(b.name))
 
     return { requiredVersion, source, dependencies }
+  })
+  
+  ipcMain.handle('nvm:installEngine', async (event, engine: string) => {
+    const onStream = (msg: string, type: string) => event.sender.send('nvm:stream', { msg, type })
+    const res = await installEngine(engine, onStream)
+    updateTrayMenu()
+    return res
   })
   
   ipcMain.handle('nvm:installVersion', async (event, version: string) => {

@@ -1,7 +1,7 @@
 
 
 <div align="center">
-  <img src="assets/LOGO.png" alt="NVM-OTF Logo" width="200" />
+  <img src="assets/LOGO.png" alt="NVM-OTF Logo" width="full" />
 </div>
 
 # NVM: OnTheFly!

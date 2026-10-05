@@ -1,40 +1,27 @@
 {
-  "name": "nvm-onthefly",
-  "version": "2.0.2",
-  "author": "Apurv Gupta <https://github.com/0xd34db8/>",
-  "main": "./out/main/index.js",
+  "name": "site",
+  "private": true,
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "build:win": "electron-vite build && electron-builder --win --config",
+    "dev": "vite",
+    "build": "vite build",
     "lint": "oxlint",
-    "preview": "electron-vite preview"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@electron-toolkit/utils": "^4.0.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.48.0",
+    "locomotive-scroll": "^5.0.1",
+    "lucide-react": "^1.52.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "sudo-prompt": "^9.2.1",
-    "tailwind-merge": "^3.7.0",
-    "zustand": "^5.0.15"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^4.3.0",
-    "electron": "^34.0.0",
-    "electron-builder": "^25.0.0-alpha.6",
-    "electron-vite": "^2.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "~6.0.2",
-    "vite": "^5.4.14"
+    "vite": "^8.3.0"
   }
 }

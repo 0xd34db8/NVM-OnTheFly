@@ -10,15 +10,12 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-out
-release
 *.local
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
-idea
 .DS_Store
 *.suo
 *.ntvs*
@@ -26,11 +23,7 @@ idea
 *.sln
 *.sw?
 
-
-_legacy/
-
-# Vite temporary config files
-vite.config.*.mjs
-vite.config.*.cjs
-*.vite.config.*.mjs
-*.vite.config.*.cjs
+# Agent Skills
+.agents/
+skills-lock.json
+.aider-desk/

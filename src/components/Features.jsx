@@ -1,6 +1,29 @@
 import { Cpu, FolderSearch, ListTree, PackageOpen, TerminalSquare, HardDrive, Zap } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 export default function Features() {
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-reveal');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { 
+      threshold: 0.1,
+      rootMargin: "0px 0px -50px 0px"
+    });
+
+    if (sectionRef.current) {
+      const elements = sectionRef.current.querySelectorAll('.reveal-target');
+      elements.forEach(el => observer.observe(el));
+    }
+
+    return () => observer.disconnect();
+  }, []);
   const features = [
     {
       title: "Native Engine Integration",
@@ -54,12 +77,12 @@ export default function Features() {
   ];
 
   return (
-    <section id="features" className="py-32 relative border-t border-border/30 bg-background overflow-hidden" data-scroll-section>
+    <section ref={sectionRef} id="features" className="py-32 relative border-t border-border/30 bg-background overflow-hidden" data-scroll-section>
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-green/5 blur-[120px] rounded-full pointer-events-none" />
       
       <div className="max-w-[1200px] mx-auto px-6 lg:px-12 relative z-10">
-        <div className="text-center mb-20" data-scroll data-scroll-speed="0.2">
+        <div className="reveal-target text-center mb-20 opacity-0 translate-y-12 scale-95 transition-all duration-1000 ease-out [&.is-reveal]:opacity-100 [&.is-reveal]:translate-y-0 [&.is-reveal]:scale-100">
           <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-6">
             Powerful Features.<br />
             <span className="text-muted">Designed for Productivity.</span>
@@ -73,10 +96,13 @@ export default function Features() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className={`group relative overflow-hidden rounded-3xl border border-border/50 bg-surface/30 backdrop-blur-sm p-8 transition-all duration-500 hover:border-border hover:bg-surface/50 ${feature.colSpan}`}
+              className={feature.colSpan}
               data-scroll
-              data-scroll-speed={0.1 + (index * 0.05)}
+              data-scroll-speed={0.05 + (index * 0.02)}
             >
+              <div 
+                className="reveal-target group h-full relative overflow-hidden rounded-3xl border border-border/50 bg-surface/30 backdrop-blur-sm p-8 transition-all duration-[800ms] ease-out opacity-0 translate-y-16 scale-95 [&.is-reveal]:opacity-100 [&.is-reveal]:translate-y-0 [&.is-reveal]:scale-100 hover:border-border hover:bg-surface/50"
+              >
               {/* Subtle top-right gradient that appears on hover */}
               <div className={`absolute -top-32 -right-32 w-64 h-64 bg-gradient-to-bl ${feature.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-bl-full pointer-events-none blur-3xl`} />
               
@@ -90,6 +116,7 @@ export default function Features() {
                 <p className="text-muted leading-relaxed font-light">
                   {feature.description}
                 </p>
+              </div>
               </div>
             </div>
           ))}

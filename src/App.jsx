@@ -9,11 +9,14 @@ import Footer from './components/Footer';
 
 export default function App() {
   const scrollRef = useRef(null);
-  const [downloadUrl, setDownloadUrl] = useState('#');
+  const [downloadUrl, setDownloadUrl] = useState('https://github.com/0xd34db8/NVM-OnTheFly/releases/latest');
 
   useEffect(() => {
     fetch('https://api.github.com/repos/0xd34db8/NVM-OnTheFly/releases/latest')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         if (data && data.assets) {
           const exeAsset = data.assets.find(asset => asset.name.endsWith('.exe'));
@@ -22,7 +25,10 @@ export default function App() {
           }
         }
       })
-      .catch(err => console.error("Failed to fetch latest release:", err));
+      .catch(err => {
+        console.error("Failed to fetch latest release:", err);
+        // Fallback URL is already set in the initial state
+      });
 
     const scroll = new LocomotiveScroll({
       el: scrollRef.current,

@@ -30,8 +30,8 @@ export default function Features() {
 
         {/* Sticky Left Header */}
         <div className="lg:col-span-4" data-scroll data-scroll-speed="0.5">
-          <div className="lg:sticky lg:top-32">
-            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-foreground mb-6">
+          <div className="lg:sticky lg:top-32 flex flex-col items-center text-center lg:items-start lg:text-left">
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6">
               Features.<br />
               <span className="text-muted">Of The Application.</span>
             </h2>
@@ -50,7 +50,7 @@ export default function Features() {
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="group flex flex-col sm:flex-row gap-8 py-12 border-b border-border/50 hover:bg-surface/30 transition-colors duration-500 px-6 -mx-6 sm:mx-0 sm:px-8 rounded-2xl"
+                className="group flex flex-col sm:flex-row items-center text-center sm:items-start sm:text-left gap-6 sm:gap-8 py-8 sm:py-12 border-b border-border/50 hover:bg-surface/30 transition-colors duration-500 px-6 -mx-6 sm:mx-0 sm:px-8 rounded-2xl"
               >
                 <div className="flex-shrink-0 mt-1">
                   {feature.icon}

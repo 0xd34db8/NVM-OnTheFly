@@ -30,3 +30,6 @@ skills-lock.json
 
 out/
 idea
+
+# Commit messages
+.gitmessage

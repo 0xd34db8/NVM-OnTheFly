@@ -4,15 +4,29 @@
 @theme {
   --animate-shimmer: shimmer 2s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
+
   --keyframes-shimmer: {
-    '100%': { transform: 'translateX(100%)' }
-  };
+    '100%': {
+      transform: 'translateX(100%)'
+    }
+  }
+
+  ;
+
   --keyframes-float: {
-    '0%, 100%': { transform: 'translateY(0)' },
-    '50%': { transform: 'translateY(-10px)' }
-  };
-  
-  --color-brand-green: #0B5810;
+    '0%, 100%': {
+      transform: 'translateY(0)'
+    }
+
+    ,
+    '50%': {
+      transform: 'translateY(-10px)'
+    }
+  }
+
+  ;
+
+  --color-brand-green: #12DB1E;
   --color-brand-secondary: #08400C;
   --color-background: #050505;
   --color-surface: #0a0a0a;
@@ -31,7 +45,7 @@
 
 body {
   background-color: var(--background);
-  background-image: 
+  background-image:
     radial-gradient(circle at 50% -20%, rgba(11, 88, 16, 0.15), transparent 60%),
     radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.02), transparent 50%);
   color: var(--foreground);
@@ -49,12 +63,15 @@ body {
 html.has-scroll-smooth {
   overflow: hidden;
 }
+
 html.has-scroll-dragging {
   user-select: none;
 }
+
 .has-scroll-smooth body {
   overflow: hidden;
 }
+
 .has-scroll-smooth [data-scroll-container] {
   min-height: 100vh;
 }
@@ -63,13 +80,16 @@ html.has-scroll-dragging {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #27272a;
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
 }

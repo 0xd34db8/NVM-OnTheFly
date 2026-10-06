@@ -4,7 +4,7 @@ import heroLogo from '../assets/Hero.png';
 
 export default function Hero({ downloadUrl }) {
   return (
-    <section className="relative min-h-[100dvh] pt-32 pb-24 overflow-hidden flex items-center" data-scroll-section>
+    <section id="hero" className="relative min-h-[100dvh] pt-32 pb-24 overflow-hidden flex items-center" data-scroll-section>
       <div className="absolute top-0 right-0 w-[50vw] h-[50vw] bg-brand-green/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 -z-10 pointer-events-none"></div>
 
       <div className="max-w-[1200px] mx-auto px-6 lg:px-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-center">
@@ -47,14 +47,14 @@ export default function Hero({ downloadUrl }) {
             {/* Ambient Glow */}
             <div 
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] sm:w-[400px] sm:h-[400px] lg:w-[500px] lg:h-[500px] opacity-40 blur-[60px] sm:blur-[80px] rounded-full pointer-events-none"
-              style={{ background: 'radial-gradient(circle, transparent 25%, #4EE8AF 45%, #4EE8AF 100%)' }}
+              style={{ background: 'radial-gradient(circle, transparent 25%, #12DB1E 45%, #12DB1E 100%)' }}
             ></div>
             
             <div className="absolute inset-0 flex items-center justify-center animate-float">
               <img 
                 src={heroLogo} 
                 alt="NVM-OnTheFly Logo" 
-                className="w-[280px] h-[280px] sm:w-[400px] sm:h-[400px] lg:w-[549px] lg:h-[549px] max-w-none object-contain drop-shadow-[0_0_40px_rgba(78,232,175,0.4)] sm:drop-shadow-[0_0_80px_rgba(78,232,175,0.4)]"
+                className="w-[280px] h-[280px] sm:w-[400px] sm:h-[400px] lg:w-[549px] lg:h-[549px] max-w-none object-contain drop-shadow-[0_0_40px_rgba(18,219,30,0.4)] sm:drop-shadow-[0_0_80px_rgba(18,219,30,0.4)]"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';

@@ -1,71 +1,99 @@
-import { Zap, HardDrive, PackageCheck, Layers, ArrowRight } from 'lucide-react';
+import { Cpu, FolderSearch, ListTree, PackageOpen, TerminalSquare, HardDrive, Zap } from 'lucide-react';
 
 export default function Features() {
   const features = [
     {
-      title: "Project Auto-Detection",
-      description: "Instantly analyzes package.json to identify and install the exact Node.js version required by your workspace.",
-      icon: <Layers strokeWidth={1} className="w-8 h-8 text-muted group-hover:text-foreground transition-colors duration-500" />
+      title: "Native Engine Integration",
+      description: "Hooks directly into your existing nvm-sh and nvm-windows installations. Zero lock-in and 100% compatibility—what you see is what your terminal gets.",
+      icon: <Cpu strokeWidth={1.5} className="w-6 h-6 text-brand-green" />,
+      colSpan: "lg:col-span-8",
+      bgGradient: "from-brand-green/20 to-transparent"
     },
     {
-      title: "Optimistic UI",
-      description: "Intelligent command stream parsing updates local state instantly, entirely bypassing slow redundant shell polling.",
-      icon: <Zap strokeWidth={1} className="w-8 h-8 text-muted group-hover:text-foreground transition-colors duration-500" />
+      title: "Project Auto-Detection",
+      description: "Drag and drop a project directory to instantly parse package.json, analyze dependencies, and one-click switch to the required Node.js version.",
+      icon: <FolderSearch strokeWidth={1.5} className="w-6 h-6 text-brand-green" />,
+      colSpan: "lg:col-span-4",
+      bgGradient: "from-brand-green/10 to-transparent"
+    },
+    {
+      title: "Visual Version Management",
+      description: "View remote releases, install new versions, and efficiently batch-uninstall multiple Node versions via a sleek floating action bar.",
+      icon: <ListTree strokeWidth={1.5} className="w-6 h-6 text-brand-green" />,
+      colSpan: "lg:col-span-4",
+      bgGradient: "from-brand-green/10 to-transparent"
+    },
+    {
+      title: "Global Package Manager",
+      description: "List, update, and uninstall global packages. Seamlessly migrate your favorite packages from older Node versions during new installations.",
+      icon: <PackageOpen strokeWidth={1.5} className="w-6 h-6 text-brand-green" />,
+      colSpan: "lg:col-span-4",
+      bgGradient: "from-brand-green/10 to-transparent"
+    },
+    {
+      title: "Interactive Console",
+      description: "A slide-up terminal console streams real-time logs from tasks and lets you execute arbitrary shell commands across engines.",
+      icon: <TerminalSquare strokeWidth={1.5} className="w-6 h-6 text-brand-green" />,
+      colSpan: "lg:col-span-4",
+      bgGradient: "from-brand-green/10 to-transparent"
     },
     {
       title: "Storage Insights",
-      description: "Automatically calculates disk space occupied by local versions, global packages, and remote downloads.",
-      icon: <HardDrive strokeWidth={1} className="w-8 h-8 text-muted group-hover:text-foreground transition-colors duration-500" />
+      description: "Automatically calculates and displays the precise disk space occupied by your local Node versions, remote downloads, and global packages.",
+      icon: <HardDrive strokeWidth={1.5} className="w-6 h-6 text-brand-green" />,
+      colSpan: "lg:col-span-5",
+      bgGradient: "from-brand-green/10 to-transparent"
     },
     {
-      title: "Global Package Migration",
-      description: "Seamlessly migrate globally installed NPM packages from older versions during new installations.",
-      icon: <PackageCheck strokeWidth={1} className="w-8 h-8 text-muted group-hover:text-foreground transition-colors duration-500" />
+      title: "Lightning Fast Optimistic UI",
+      description: "Intelligent command stream parsing updates local state instantly, entirely bypassing slow redundant shell polling to keep the application buttery smooth.",
+      icon: <Zap strokeWidth={1.5} className="w-6 h-6 text-brand-green" />,
+      colSpan: "lg:col-span-7",
+      bgGradient: "from-brand-green/20 to-transparent"
     }
   ];
 
   return (
-    <section id="how-it-works" className="py-32 relative border-t border-border/30" data-scroll-section>
-      <div className="max-w-[1200px] mx-auto px-6 lg:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8">
-
-        {/* Sticky Left Header */}
-        <div className="lg:col-span-4" data-scroll data-scroll-speed="0.5">
-          <div className="lg:sticky lg:top-32 flex flex-col items-center text-center lg:items-start lg:text-left">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6">
-              Features.<br />
-              <span className="text-muted">Of The Application.</span>
-            </h2>
-            <p className="text-muted leading-relaxed font-light mb-8 max-w-[30ch]">
-              It acts as a seamless GUI wrapper for NVM. Instead of creating isolated folders, it hooks directly into your existing system installations via native shell execution.
-            </p>
-            <a href="#" className="inline-flex items-center gap-2 text-sm font-medium text-brand-green hover:text-brand-secondary transition-colors">
-              Read the documentation <ArrowRight className="w-4 h-4" />
-            </a>
-          </div>
+    <section id="features" className="py-32 relative border-t border-border/30 bg-background overflow-hidden" data-scroll-section>
+      {/* Background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-green/5 blur-[120px] rounded-full pointer-events-none" />
+      
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-12 relative z-10">
+        <div className="text-center mb-20" data-scroll data-scroll-speed="0.2">
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-6">
+            Powerful Features.<br />
+            <span className="text-muted">Designed for Productivity.</span>
+          </h2>
+          <p className="text-muted leading-relaxed font-light max-w-2xl mx-auto">
+            Experience a modern GUI wrapper for NVM that hooks directly into your existing system installations via native shell execution.
+          </p>
         </div>
 
-        {/* Right Editorial List */}
-        <div className="lg:col-span-8 flex flex-col">
-          <div className="border-t border-border/50">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="group flex flex-col sm:flex-row items-center text-center sm:items-start sm:text-left gap-6 sm:gap-8 py-8 sm:py-12 border-b border-border/50 hover:bg-surface/30 transition-colors duration-500 px-6 -mx-6 sm:mx-0 sm:px-8 rounded-2xl"
-              >
-                <div className="flex-shrink-0 mt-1">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className={`group relative overflow-hidden rounded-3xl border border-border/50 bg-surface/30 backdrop-blur-sm p-8 transition-all duration-500 hover:border-border hover:bg-surface/50 ${feature.colSpan}`}
+              data-scroll
+              data-scroll-speed={0.1 + (index * 0.05)}
+            >
+              {/* Subtle top-right gradient that appears on hover */}
+              <div className={`absolute -top-32 -right-32 w-64 h-64 bg-gradient-to-bl ${feature.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-bl-full pointer-events-none blur-3xl`} />
+              
+              <div className="relative z-10 h-full flex flex-col justify-start">
+                <div className="w-12 h-12 rounded-2xl bg-surface border border-border/50 flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 group-hover:bg-brand-green/10 transition-all duration-500">
                   {feature.icon}
                 </div>
-                <div>
-                  <h3 className="text-2xl font-medium tracking-tight text-foreground mb-4 group-hover:text-brand-green transition-colors duration-500">{feature.title}</h3>
-                  <p className="text-muted leading-relaxed font-light max-w-[50ch]">
-                    {feature.description}
-                  </p>
-                </div>
+                <h3 className="text-2xl font-medium tracking-tight text-foreground mb-3 group-hover:text-brand-green transition-colors duration-500">
+                  {feature.title}
+                </h3>
+                <p className="text-muted leading-relaxed font-light">
+                  {feature.description}
+                </p>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-
       </div>
     </section>
   );

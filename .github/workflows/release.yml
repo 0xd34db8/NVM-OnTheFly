@@ -54,8 +54,8 @@ jobs:
       - name: Create GitHub Release and Upload Binary
         uses: softprops/action-gh-release@v2
         with:
-          # Automatically generate release notes from PRs and commits since the last tag
-          generate_release_notes: true
+          # Use the RELEASE_NOTES.md file for the release notes
+          body_path: RELEASE_NOTES.md
           # Grab any executable file generated in the dist folder
           files: |
             dist/*.exe

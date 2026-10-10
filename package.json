@@ -45,6 +45,7 @@
     "@swc/core@1.16.13": true
   },
   "overrides": {
-    "sprintf-js": "^1.1.3"
+    "sprintf-js": "^1.1.3",
+    "vite": "$vite"
   }
 }

@@ -27,7 +27,7 @@ idea
 *.sw?
 
 
-_legacy/
+.gitmessage
 
 # Vite temporary config files
 vite.config.*.mjs

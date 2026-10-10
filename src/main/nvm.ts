@@ -1,5 +1,5 @@
 import { spawn, exec, ChildProcess } from 'node:child_process'
-import * as sudo from 'sudo-prompt'
+import * as sudo from '@vscode/sudo-prompt'
 import { join } from 'node:path'
 
 if (process.platform === 'win32') {
@@ -27,7 +27,7 @@ export async function checkAvailableModes(): Promise<Mode[]> {
     if (process.platform === 'win32') {
         try {
             await new Promise<void>((resolve, reject) => {
-                const cmd = spawn('nvm', ['version'], { shell: true })
+                const cmd = spawn('nvm version', { shell: true })
                 cmd.on('exit', code => code === 0 ? resolve() : reject())
                 cmd.on('error', () => reject())
             })
@@ -99,7 +99,7 @@ export function runCommand(args: string[], onStream?: (msg: string, type: string
         let isFallback = false
 
         const executeCmd = (executable: string, cmdArgs: string[], useShell: boolean) => {
-            const cmd = spawn(executable, cmdArgs, { shell: useShell })
+            const cmd = useShell ? spawn(`${executable} ${cmdArgs.join(' ')}`, { shell: true }) : spawn(executable, cmdArgs, { shell: false })
             if (args[0] === 'install') {
                 activeInstallProcess = cmd;
             }
@@ -376,7 +376,7 @@ export async function migratePackages(version: string, fromVersion: string, pack
             if (fs.existsSync(npmPath)) {
                 if (onStream) onStream(`\n> npm install -g ${packages.join(' ')}\n`, 'system')
                 await new Promise<void>(resolve => {
-                    const cmd = spawn(`"${npmPath}"`, ['install', '-g', ...packages], { shell: true })
+                    const cmd = spawn(`"${npmPath}" install -g ${packages.join(' ')}`, { shell: true })
                     cmd.stdout.on('data', d => { if (onStream) onStream(String(d), 'info') })
                     cmd.stderr.on('data', d => { if (onStream) onStream(String(d), 'error') })
                     cmd.on('exit', () => resolve())

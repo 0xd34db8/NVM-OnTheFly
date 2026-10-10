@@ -14,12 +14,12 @@
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@vscode/sudo-prompt": "^9.3.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.48.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "sudo-prompt": "^9.2.1",
     "tailwind-merge": "^3.7.0",
     "zustand": "^5.0.15"
   },
@@ -27,14 +27,24 @@
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^4.3.0",
-    "electron": "^34.0.0",
-    "electron-builder": "^25.0.0-alpha.6",
-    "electron-vite": "^2.3.0",
+    "@vitejs/plugin-react-swc": "^4.3.3",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~6.0.2",
-    "vite": "^5.4.14"
+    "vite": "^8.3.4"
+  },
+  "allowScripts": {
+    "electron@34.5.8": true,
+    "electron@44.7.0": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.25.12": true,
+    "@swc/core@1.16.13": true
+  },
+  "overrides": {
+    "sprintf-js": "^1.1.3"
   }
 }

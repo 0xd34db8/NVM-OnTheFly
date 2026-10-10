@@ -120,7 +120,7 @@ export function runCommand(args: string[], onStream?: (msg: string, type: string
 
                     let bashCmd = `source ~/.bash_profile 2>/dev/null || true; source ~/.bashrc 2>/dev/null || true; source ~/.nvm/nvm.sh 2>/dev/null || true; nvm use default >/dev/null 2>&1; nvm ${fallbackArgs.join(' ')}`
                     if (fallbackArgs[0] === 'ls') {
-                        bashCmd += `; echo "---CURRENT---"; cat ~/.nvm/alias/default 2>/dev/null || echo "None"`
+                        bashCmd += ` && echo "---CURRENT---" && { cat ~/.nvm/alias/default 2>/dev/null || echo "None"; }`
                     }
 
                     executeCmd('bash', ['-c', bashCmd], false)

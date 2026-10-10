@@ -152,7 +152,9 @@ function App() {
 
         {/* Content */}
         <main className="flex-1 overflow-hidden bg-background p-6">
-          {currentMode === 'Error' ? (
+          {activeTab === 'settings' ? (
+            <SettingsView />
+          ) : currentMode === 'Error' ? (
             <EngineSetup />
           ) : (
             <>
@@ -160,7 +162,6 @@ function App() {
               {activeTab === 'packages' && <GlobalPackages />}
               {activeTab === 'aliases' && <AliasManager />}
               {activeTab === 'console' && <TerminalConsole />}
-              {activeTab === 'settings' && <SettingsView />}
             </>
           )}
         </main>

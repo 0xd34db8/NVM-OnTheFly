@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Terminal, Download, Settings, X, Loader2 } from 'lucide-react'
+import { Terminal, Download, AlertTriangle, X, Loader2 } from 'lucide-react'
 import { useNvmStore } from '../store/nvmStore'
 import TerminalConsole from './TerminalConsole'
 
@@ -24,9 +24,7 @@ export default function EngineSetup() {
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 relative overflow-hidden">
       <div className="max-w-2xl w-full bg-card border border-border rounded-xl shadow-lg p-8 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-500 z-10">
-        <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-6">
-          <Settings className="w-8 h-8" />
-        </div>
+        <AlertTriangle className="w-16 h-16 text-destructive mb-6" />
         
         <h2 className="text-2xl font-bold mb-3">No NVM Engine Detected</h2>
         <p className="text-muted-foreground mb-8">
